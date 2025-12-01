@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "915466423350",
+    "project_id": "neuroconecta-app",
+    "storage_bucket": "neuroconecta-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:915466423350:android:4513a23ae8f71fac62dc97",
+        "android_client_info": {
+          "package_name": "com.example.neuroconecta"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOj7UuoY2SOafYY6AfubezKeJazXTVOsY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:915466423350:android:ac713405515f360862dc97",
+        "android_client_info": {
+          "package_name": "com.example.neuroconecta2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOj7UuoY2SOafYY6AfubezKeJazXTVOsY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
