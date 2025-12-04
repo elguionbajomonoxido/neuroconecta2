@@ -2,44 +2,44 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/retroalimentacion.dart';
 import '../services/feedback_service.dart';
-import 'star_rating.dart';
+import 'estrella_rating.dart';
 
-class FeedbackForm extends StatefulWidget {
+class FormularioRetroalimentacion extends StatefulWidget {
   final String capsulaId;
 
-  const FeedbackForm({super.key, required this.capsulaId});
+  const FormularioRetroalimentacion({super.key, required this.capsulaId});
 
   @override
-  State<FeedbackForm> createState() => _FeedbackFormState();
+  State<FormularioRetroalimentacion> createState() => _FormularioRetroalimentacionState();
 }
 
-class _FeedbackFormState extends State<FeedbackForm> {
-  final _commentController = TextEditingController();
-  final FeedbackService _feedbackService = FeedbackService();
-  int _rating = 0;
-  bool _isSubmitting = false;
+class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacion> {
+  final _controladorComentario = TextEditingController();
+  final ServicioRetroalimentacion _servicioRetroalimentacion = ServicioRetroalimentacion();
+  int _calificacion = 0;
+  bool _estaEnviando = false;
 
   @override
   void dispose() {
-    _commentController.dispose();
+    _controladorComentario.dispose();
     super.dispose();
   }
 
-  Future<void> _submitFeedback() async {
-    if (_rating == 0) {
+  Future<void> _enviarRetroalimentacion() async {
+    if (_calificacion == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor selecciona una calificación (estrellas).')),
       );
       return;
     }
-    if (_commentController.text.trim().isEmpty) {
+    if (_controladorComentario.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor escribe un comentario.')),
       );
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    setState(() => _estaEnviando = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -50,20 +50,20 @@ class _FeedbackFormState extends State<FeedbackForm> {
         capsulaId: widget.capsulaId,
         usuarioUid: user.uid,
         nombreUsuario: user.displayName ?? 'Usuario',
-        comentario: _commentController.text.trim(),
-        estrellas: _rating,
+        comentario: _controladorComentario.text.trim(),
+        estrellas: _calificacion,
         createdAt: DateTime.now(),
       );
 
-      await _feedbackService.addFeedback(feedback);
+      await _servicioRetroalimentacion.agregarRetroalimentacion(feedback);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('¡Gracias por tu opinión!'), backgroundColor: Colors.green),
         );
-        _commentController.clear();
+        _controladorComentario.clear();
         setState(() {
-          _rating = 0;
+          _calificacion = 0;
         });
       }
     } catch (e) {
@@ -73,7 +73,7 @@ class _FeedbackFormState extends State<FeedbackForm> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      if (mounted) setState(() => _estaEnviando = false);
     }
   }
 
@@ -89,15 +89,15 @@ class _FeedbackFormState extends State<FeedbackForm> {
             const Text('Deja tu opinión', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             Center(
-              child: StarRating(
-                rating: _rating,
-                size: 40,
-                onRatingChanged: (rating) => setState(() => _rating = rating),
+              child: ClasificacionEstrellas(
+                calificacion: _calificacion,
+                tamano: 40,
+                alCambiarCalificacion: (rating) => setState(() => _calificacion = rating),
               ),
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: _commentController,
+              controller: _controladorComentario,
               decoration: const InputDecoration(
                 hintText: 'Escribe tu comentario aquí...',
                 border: OutlineInputBorder(),
@@ -108,8 +108,8 @@ class _FeedbackFormState extends State<FeedbackForm> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submitFeedback,
-                child: _isSubmitting
+                onPressed: _estaEnviando ? null : _enviarRetroalimentacion,
+                child: _estaEnviando
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white))
                     : const Text('Enviar Comentario'),
               ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'app.dart';
 import 'firebase_options.dart';
+import 'controllers/settings_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,11 +14,20 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // Inicializar ControladorConfiguracion
+  final settingsController = ControladorConfiguracion();
+  await settingsController.cargarConfiguracion();
+
   // Forzar modo vertical (Portrait)
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(const NeuroConectaApp());
+  runApp(
+    ChangeNotifierProvider.value(
+      value: settingsController,
+      child: const AplicacionNeuroConecta(),
+    ),
+  );
 }

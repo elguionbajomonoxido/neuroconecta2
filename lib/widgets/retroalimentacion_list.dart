@@ -2,25 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/retroalimentacion.dart';
 import '../services/feedback_service.dart';
-import 'star_rating.dart';
+import 'estrella_rating.dart';
 
-class FeedbackList extends StatelessWidget {
+class ListaRetroalimentacion extends StatelessWidget {
   final String capsulaId;
-  final bool isAdmin;
+  final bool esAdmin;
 
-  const FeedbackList({
+  const ListaRetroalimentacion({
     super.key,
     required this.capsulaId,
-    required this.isAdmin,
+    required this.esAdmin,
   });
 
   @override
   Widget build(BuildContext context) {
-    final feedbackService = FeedbackService();
-    final currentUser = FirebaseAuth.instance.currentUser;
+    final servicioRetroalimentacion = ServicioRetroalimentacion();
+    final usuarioActual = FirebaseAuth.instance.currentUser;
 
     return StreamBuilder<List<Retroalimentacion>>(
-      stream: feedbackService.getFeedbackForCapsule(capsulaId),
+      stream: servicioRetroalimentacion.obtenerRetroalimentacionPorCapsula(capsulaId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -45,8 +45,8 @@ class FeedbackList extends StatelessWidget {
           separatorBuilder: (context, index) => const Divider(),
           itemBuilder: (context, index) {
             final item = feedbacks[index];
-            final isOwner = currentUser?.uid == item.usuarioUid;
-            final canDelete = isAdmin || isOwner;
+            final esPropietario = usuarioActual?.uid == item.usuarioUid;
+            final puedeEliminar = esAdmin || esPropietario;
 
             return ListTile(
               contentPadding: EdgeInsets.zero,
@@ -65,7 +65,7 @@ class FeedbackList extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                  StarRating(rating: item.estrellas, size: 16),
+                  ClasificacionEstrellas(calificacion: item.estrellas, tamano: 16),
                 ],
               ),
               subtitle: Column(
@@ -75,15 +75,15 @@ class FeedbackList extends StatelessWidget {
                   Text(item.comentario),
                   const SizedBox(height: 4),
                   Text(
-                    _formatDate(item.createdAt),
+                    _formatearFecha(item.createdAt),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                 ],
               ),
-              trailing: canDelete
+              trailing: puedeEliminar
                   ? IconButton(
                       icon: const Icon(Icons.delete_outline, size: 20, color: Colors.grey),
-                      onPressed: () => _confirmDelete(context, feedbackService, item.id),
+                      onPressed: () => _confirmarEliminacion(context, servicioRetroalimentacion, item.id),
                     )
                   : null,
             );
@@ -93,11 +93,11 @@ class FeedbackList extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _formatearFecha(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  void _confirmDelete(BuildContext context, FeedbackService service, String id) {
+  void _confirmarEliminacion(BuildContext context, ServicioRetroalimentacion servicio, String id) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -107,7 +107,7 @@ class FeedbackList extends StatelessWidget {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           TextButton(
             onPressed: () {
-              service.deleteFeedback(id);
+              servicio.eliminarRetroalimentacion(id);
               Navigator.pop(context);
             },
             child: const Text('Eliminar', style: TextStyle(color: Colors.red)),

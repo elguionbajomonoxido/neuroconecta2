@@ -19,7 +19,7 @@ class Retroalimentacion {
     required this.createdAt,
   });
 
-  factory Retroalimentacion.fromFirestore(DocumentSnapshot doc) {
+  factory Retroalimentacion.desdeFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return Retroalimentacion(
       id: doc.id,
@@ -32,7 +32,7 @@ class Retroalimentacion {
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> aMapa() {
     return {
       'capsulaId': capsulaId,
       'usuarioUid': usuarioUid,

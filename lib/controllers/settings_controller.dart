@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SettingsController extends ChangeNotifier {
-  static const String _themePaletteKey = 'themePalette';
-  static const String _colorBlindModeKey = 'colorBlindMode';
-  static const String _textScaleFactorKey = 'textScaleFactor';
-  static const String _kidsModeEnabledKey = 'kidsModeEnabled';
+class ControladorConfiguracion extends ChangeNotifier {
+  static const String _themePaletteKey = 'paletaTema';
+  static const String _colorBlindModeKey = 'modoDaltonismo';
+  static const String _textScaleFactorKey = 'factorEscalaTexto';
+  static const String _kidsModeEnabledKey = 'modoNinosActivado';
 
   late SharedPreferences _prefs;
 
@@ -16,13 +16,18 @@ class SettingsController extends ChangeNotifier {
   bool _kidsModeEnabled = false;
 
   // Getters
+  String get paletaTema => _themePalette;
+  String get modoDaltonismo => _colorBlindMode;
+  double get factorEscalaTexto => _textScaleFactor;
+  bool get modoNinosActivado => _kidsModeEnabled;
+
+  // English Getters (Aliases)
   String get themePalette => _themePalette;
   String get colorBlindMode => _colorBlindMode;
   double get textScaleFactor => _textScaleFactor;
-  bool get kidsModeEnabled => _kidsModeEnabled;
 
   // Inicialización
-  Future<void> loadSettings() async {
+  Future<void> cargarConfiguracion() async {
     _prefs = await SharedPreferences.getInstance();
     String loadedPalette = _prefs.getString(_themePaletteKey) ?? 'lavanda';
     
@@ -45,25 +50,25 @@ class SettingsController extends ChangeNotifier {
   }
 
   // Setters con persistencia
-  Future<void> setThemePalette(String palette) async {
+  Future<void> establecerPaletaTema(String palette) async {
     _themePalette = palette;
     await _prefs.setString(_themePaletteKey, palette);
     notifyListeners();
   }
 
-  Future<void> setColorBlindMode(String mode) async {
+  Future<void> establecerModoDaltonismo(String mode) async {
     _colorBlindMode = mode;
     await _prefs.setString(_colorBlindModeKey, mode);
     notifyListeners();
   }
 
-  Future<void> setTextScaleFactor(double scale) async {
+  Future<void> establecerFactorEscalaTexto(double scale) async {
     _textScaleFactor = scale.clamp(0.8, 1.5);
     await _prefs.setDouble(_textScaleFactorKey, _textScaleFactor);
     notifyListeners();
   }
 
-  Future<void> setKidsModeEnabled(bool enabled) async {
+  Future<void> establecerModoNinos(bool enabled) async {
     _kidsModeEnabled = enabled;
     await _prefs.setBool(_kidsModeEnabledKey, enabled);
     notifyListeners();

@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
 import 'routes/app_routes.dart';
+import 'controllers/settings_controller.dart';
 
-class NeuroConectaApp extends StatelessWidget {
-  const NeuroConectaApp({super.key});
+class AplicacionNeuroConecta extends StatelessWidget {
+  const AplicacionNeuroConecta({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'NeuroConecta',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme,
-      routerConfig: AppRoutes.router,
+    return Consumer<ControladorConfiguracion>(
+      builder: (context, settings, child) {
+        return MaterialApp.router(
+          title: 'NeuroConecta',
+          debugShowCheckedModeBanner: false,
+          theme: TemaAplicacion.obtenerTema(settings),
+          routerConfig: RutasAplicacion.router,
+        );
+      },
     );
   }
 }

@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
-class StarRating extends StatelessWidget {
-  final int rating;
-  final double size;
+class ClasificacionEstrellas extends StatelessWidget {
+  final int calificacion;
+  final double tamano;
   final Color color;
-  final Function(int)? onRatingChanged;
+  final Function(int)? alCambiarCalificacion;
 
-  const StarRating({
+  const ClasificacionEstrellas({
     super.key,
-    required this.rating,
-    this.size = 24,
+    required this.calificacion,
+    this.tamano = 24,
     this.color = Colors.amber,
-    this.onRatingChanged,
+    this.alCambiarCalificacion,
   });
 
   @override
@@ -21,10 +21,10 @@ class StarRating extends StatelessWidget {
       children: List.generate(5, (index) {
         final starIndex = index + 1;
         return GestureDetector(
-          onTap: onRatingChanged != null ? () => onRatingChanged!(starIndex) : null,
+          onTap: alCambiarCalificacion != null ? () => alCambiarCalificacion!(starIndex) : null,
           child: Icon(
-            starIndex <= rating ? Icons.star : Icons.star_border,
-            size: size,
+            starIndex <= calificacion ? Icons.star : Icons.star_border,
+            size: tamano,
             color: color,
           ),
         );

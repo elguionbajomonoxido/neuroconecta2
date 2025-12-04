@@ -2,64 +2,70 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../features/auth/screens/login_screen.dart';
-import '../features/onboarding/welcome_screen.dart';
-import '../features/capsulas/screens/home_screen.dart';
-import '../features/capsulas/screens/capsule_detail_screen.dart';
-import '../features/capsulas/screens/create_capsule_screen.dart';
-import '../features/capsulas/screens/edit_capsule_screen.dart';
+import '../screens/login_screen.dart';
+import '../screens/welcome_screen.dart';
+import '../screens/home_screen.dart';
+import '../screens/detalles_capsula_screen.dart';
+import '../screens/crea_capsula_screen.dart';
+import '../screens/edita_capsula_screen.dart';
+import '../screens/settings_screen.dart';
 
-class AppRoutes {
-  static const String login = '/login';
-  static const String welcome = '/welcome';
-  static const String home = '/';
-  static const String createCapsule = '/create-capsule';
-  static const String editCapsule = '/edit-capsule';
-  static const String capsuleDetail = '/capsule-detail';
+class RutasAplicacion {
+  static const String inicioSesion = '/inicio-sesion';
+  static const String bienvenida = '/bienvenida';
+  static const String inicio = '/';
+  static const String crearCapsula = '/crear-capsula';
+  static const String editarCapsula = '/editar-capsula';
+  static const String detalleCapsula = '/detalle-capsula';
+  static const String configuracion = '/configuracion';
 
   static final GoRouter router = GoRouter(
-    initialLocation: login,
+    initialLocation: inicioSesion,
     refreshListenable: GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
     routes: [
       GoRoute(
-        path: login,
-        builder: (context, state) => const LoginScreen(),
+        path: inicioSesion,
+        builder: (context, state) => const PantallaLogin(),
       ),
       GoRoute(
-        path: welcome,
-        builder: (context, state) => const WelcomeScreen(),
+        path: bienvenida,
+        builder: (context, state) => const PantallaBienvenida(),
       ),
       GoRoute(
-        path: home,
-        builder: (context, state) => const HomeScreen(),
+        path: inicio,
+        builder: (context, state) => const PaginaInicio(),
       ),
       GoRoute(
-        path: createCapsule,
-        builder: (context, state) => const CreateCapsuleScreen(),
+        path: configuracion,
+        builder: (context, state) => const PaginaConfiguracion(),
       ),
       GoRoute(
-        path: '$editCapsule/:id',
+        path: crearCapsula,
+        builder: (context, state) => const PantallaCrearCapsula(),
+      ),
+      GoRoute(
+        path: '$editarCapsula/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          return EditCapsuleScreen(capsuleId: id);
+          return PantallaEditarCapsula(capsuleId: id);
         },
       ),
       GoRoute(
-        path: '$capsuleDetail/:id',
+        path: '$detalleCapsula/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          return CapsuleDetailScreen(capsuleId: id);
+          return PantallaDetalleCapsula(capsuleId: id);
         },
       ),
     ],
     redirect: (context, state) {
       final user = FirebaseAuth.instance.currentUser;
       final isLoggedIn = user != null;
-      final isLoggingIn = state.uri.toString() == login;
+      final isLoggingIn = state.uri.toString() == inicioSesion;
 
-      // Si no está logueado y no está en login, mandar a login
+      // Si no está logueado y no está en inicioSesion, mandar a inicioSesion
       if (!isLoggedIn && !isLoggingIn) {
-        return login;
+        return inicioSesion;
       }
 
       // Si ya está logueado
@@ -67,13 +73,13 @@ class AppRoutes {
         // Verificar si el email está verificado (si usó email/password)
         // Nota: Google Auth siempre tiene emailVerified = true
         if (!user.emailVerified) {
-           // Si estamos en login, permitimos estar ahí para que vea el mensaje de "Verifica tu correo"
+           // Si estamos en inicioSesion, permitimos estar ahí para que vea el mensaje de "Verifica tu correo"
            return null; 
         }
 
-        // Si está verificado y trata de ir a login, mandar a home
+        // Si está verificado y trata de ir a inicioSesion, mandar a bienvenida
         if (isLoggingIn) {
-          return home; 
+          return bienvenida; 
         }
       }
 

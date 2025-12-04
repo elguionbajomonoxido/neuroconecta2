@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -6,6 +9,15 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Leer key.properties
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+} else {
+    println("WARNING: key.properties no encontrado, se usará firma debug.")
 }
 
 android {
@@ -23,21 +35,35 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.neuroconecta2"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // ⚠️ Cambia esto si en Play Console usaste otro ID
+        applicationId = "cl.imah.neuroconecta"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        multiDexEnabled = true
+    }
+
+    // 🔐 Configuración de firma para RELEASE
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
+            storeFile = (keystoreProperties["storeFile"] as String?)?.let { file(it) }
+            storePassword = keystoreProperties["storePassword"] as String
+        }
     }
 
     buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+        getByName("debug") {
+            isDebuggable = true
+        }
+        getByName("release") {
+            // ❗ Antes firmaba con "debug", ahora con "release"
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
@@ -45,7 +71,8 @@ android {
 flutter {
     source = "../.."
 }
-// Añadir al final de android/app/build.gradle.kts
+
+// Tarea opcional para renombrar el APK (no afecta al .aab)
 tasks.register("renameFlutterApk") {
     dependsOn("assembleRelease")
     doLast {
@@ -62,3 +89,6 @@ tasks.register("renameFlutterApk") {
         }
     }
 }
+// Asegúrate de ejecutar esta tarea después de "assembleRelease" si deseas renombrar el APK
+// Puedes ejecutar: ./gradlew renameFlutterApk
+// END: Firma de la aplicación Android

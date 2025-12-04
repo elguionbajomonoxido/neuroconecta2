@@ -7,12 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:915466423350:android:4513a23ae8f71fac62dc97",
+        "mobilesdk_app_id": "1:915466423350:android:ff767a5de87a0c7f62dc97",
         "android_client_info": {
-          "package_name": "com.example.neuroconecta"
+          "package_name": "cl.imah.neuroconecta"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "915466423350-pt1ahl6e099h4c7f1st6b4pbgifb93p3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBOj7UuoY2SOafYY6AfubezKeJazXTVOsY"
@@ -20,7 +25,55 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "915466423350-pt1ahl6e099h4c7f1st6b4pbgifb93p3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "915466423350-6oor53ng6oe050bml7rhbhv15816sfo7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.neuroconecta2"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:915466423350:android:4513a23ae8f71fac62dc97",
+        "android_client_info": {
+          "package_name": "com.example.neuroconecta"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "915466423350-pt1ahl6e099h4c7f1st6b4pbgifb93p3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOj7UuoY2SOafYY6AfubezKeJazXTVOsY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "915466423350-pt1ahl6e099h4c7f1st6b4pbgifb93p3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "915466423350-6oor53ng6oe050bml7rhbhv15816sfo7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.neuroconecta2"
+              }
+            }
+          ]
         }
       }
     },
@@ -31,7 +84,20 @@
           "package_name": "com.example.neuroconecta2"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "915466423350-i8js1p5opm4e5ji9gvu3un3opoqfmagm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.neuroconecta2",
+            "certificate_hash": "8d3c735f2ce5c7e37919f8efd0b1499030146aa8"
+          }
+        },
+        {
+          "client_id": "915466423350-pt1ahl6e099h4c7f1st6b4pbgifb93p3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBOj7UuoY2SOafYY6AfubezKeJazXTVOsY"
@@ -39,7 +105,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "915466423350-pt1ahl6e099h4c7f1st6b4pbgifb93p3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "915466423350-6oor53ng6oe050bml7rhbhv15816sfo7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.neuroconecta2"
+              }
+            }
+          ]
         }
       }
     }

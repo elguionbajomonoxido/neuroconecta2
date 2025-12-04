@@ -25,7 +25,7 @@ class Capsula {
     this.updatedAt,
   });
 
-  factory Capsula.fromFirestore(DocumentSnapshot doc) {
+  factory Capsula.desdeFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return Capsula(
       id: doc.id,
@@ -41,7 +41,7 @@ class Capsula {
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> aMapa() {
     return {
       'titulo': titulo,
       'resumen': resumen,

@@ -1,28 +1,28 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/retroalimentacion.dart';
 
-class FeedbackService {
+class ServicioRetroalimentacion {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // Obtener retroalimentaciones de una cápsula
-  Stream<List<Retroalimentacion>> getFeedbackForCapsule(String capsulaId) {
+  Stream<List<Retroalimentacion>> obtenerRetroalimentacionPorCapsula(String capsulaId) {
     return _db
         .collection('retroalimentaciones')
         .where('capsulaId', isEqualTo: capsulaId)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => Retroalimentacion.fromFirestore(doc)).toList();
+      return snapshot.docs.map((doc) => Retroalimentacion.desdeFirestore(doc)).toList();
     });
   }
 
   // Agregar retroalimentación
-  Future<void> addFeedback(Retroalimentacion feedback) async {
-    await _db.collection('retroalimentaciones').add(feedback.toMap());
+  Future<void> agregarRetroalimentacion(Retroalimentacion feedback) async {
+    await _db.collection('retroalimentaciones').add(feedback.aMapa());
   }
 
   // Eliminar retroalimentación (solo dueño o admin)
-  Future<void> deleteFeedback(String id) async {
+  Future<void> eliminarRetroalimentacion(String id) async {
     await _db.collection('retroalimentaciones').doc(id).delete();
   }
 }

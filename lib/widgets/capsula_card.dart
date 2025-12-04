@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../routes/app_routes.dart';
+import '../routes/app_routes.dart';
 import '../models/capsula.dart';
 
-class CapsuleCard extends StatelessWidget {
+class TarjetaCapsula extends StatelessWidget {
   final Capsula capsula;
 
-  const CapsuleCard({super.key, required this.capsula});
+  const TarjetaCapsula({super.key, required this.capsula});
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +36,7 @@ class CapsuleCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
-          context.push('${AppRoutes.capsuleDetail}/${capsula.id}');
+          context.push('${RutasAplicacion.detalleCapsula}/${capsula.id}');
         },
         borderRadius: BorderRadius.circular(16),
         child: Padding(
