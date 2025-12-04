@@ -19,7 +19,7 @@ class FirestoreService {
         return doc.data()?['rol'] ?? 'usuario';
       }
     } catch (e) {
-      print('Error obteniendo rol: $e');
+      // Error silencioso o log
     }
     return 'usuario';
   }

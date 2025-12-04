@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../../theme/app_theme.dart';
 import '../models/retroalimentacion.dart';
 import '../services/feedback_service.dart';
 import 'star_rating.dart';
@@ -52,10 +51,10 @@ class FeedbackList extends StatelessWidget {
             return ListTile(
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(
-                backgroundColor: AppTheme.primaryColor.withOpacity(0.2),
+                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
                 child: Text(
                   item.nombreUsuario.isNotEmpty ? item.nombreUsuario[0].toUpperCase() : '?',
-                  style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
                 ),
               ),
               title: Row(

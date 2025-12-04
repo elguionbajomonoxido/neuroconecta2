@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../theme/app_theme.dart';
-import '../../../../routes/app_routes.dart';
+import '../../../routes/app_routes.dart';
 import '../models/capsula.dart';
 
 class CapsuleCard extends StatelessWidget {
@@ -27,7 +26,7 @@ class CapsuleCard extends StatelessWidget {
       case 'adultos':
       default:
         iconData = Icons.person;
-        iconColor = AppTheme.secondaryColor;
+        iconColor = Theme.of(context).colorScheme.secondary;
         break;
     }
 
