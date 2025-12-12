@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/capsula.dart';
 
+// Servicio para interactuar con Firestore
 class ServicioFirestore {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -30,14 +31,7 @@ class ServicioFirestore {
   }
 
   // --- CÁPSULAS ---
-
-  // Obtener todas las cápsulas (Stream)
-  // Los admins ven todo, los usuarios solo las que NO son borrador
   Stream<List<Capsula>> obtenerCapsulas() {
-    // Nota: Firestore no permite filtros condicionales complejos en el cliente sin índices específicos
-    // Para simplificar, traemos la colección y filtramos en memoria o usamos dos queries distintas.
-    // Aquí haremos un stream general y filtraremos en la UI o en el map si es necesario,
-    // pero lo ideal es filtrar en la query.
     
     return _db.collection('capsulas')
         .orderBy('createdAt', descending: true)

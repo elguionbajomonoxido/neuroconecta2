@@ -55,19 +55,19 @@ class ControladorConfiguracion extends ChangeNotifier {
     await _prefs.setString(_themePaletteKey, palette);
     notifyListeners();
   }
-
+  // Establece el modo daltonismo
   Future<void> establecerModoDaltonismo(String mode) async {
     _colorBlindMode = mode;
     await _prefs.setString(_colorBlindModeKey, mode);
     notifyListeners();
   }
-
+  // Establece la escala de texto
   Future<void> establecerFactorEscalaTexto(double scale) async {
     _textScaleFactor = scale.clamp(0.8, 1.5);
     await _prefs.setDouble(_textScaleFactorKey, _textScaleFactor);
     notifyListeners();
   }
-
+  // Establece el modo niños
   Future<void> establecerModoNinos(bool enabled) async {
     _kidsModeEnabled = enabled;
     await _prefs.setBool(_kidsModeEnabledKey, enabled);

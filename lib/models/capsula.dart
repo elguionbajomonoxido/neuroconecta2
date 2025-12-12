@@ -8,10 +8,11 @@ class Capsula {
   final String categoria;
   final String segmento; // 'niños', 'adolescentes', 'adultos'
   final bool esBorrador;
+  final String? mediaUrl;
   final String creadoPorUid;
   final DateTime createdAt;
   final DateTime? updatedAt;
-
+  
   Capsula({
     required this.id,
     required this.titulo,
@@ -20,6 +21,7 @@ class Capsula {
     required this.categoria,
     required this.segmento,
     required this.esBorrador,
+    this.mediaUrl,
     required this.creadoPorUid,
     required this.createdAt,
     this.updatedAt,
@@ -35,6 +37,7 @@ class Capsula {
       categoria: data['categoria'] ?? '',
       segmento: data['segmento'] ?? 'adultos',
       esBorrador: data['esBorrador'] ?? false,
+      mediaUrl: data['mediaUrl'],
       creadoPorUid: data['creadoPorUid'] ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
@@ -48,6 +51,8 @@ class Capsula {
       'contenidoLargo': contenidoLargo,
       'categoria': categoria,
       'segmento': segmento,
+      'esBorrador': esBorrador,
+      'mediaUrl': mediaUrl,
       'esBorrador': esBorrador,
       'creadoPorUid': creadoPorUid,
       'createdAt': Timestamp.fromDate(createdAt),
