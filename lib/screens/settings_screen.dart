@@ -211,6 +211,9 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
               );
 
               if (confirm == true) {
+                // Marcar que estamos cerrando sesión para evitar redirecciones automáticas
+                RutasAplicacion.isLoggingOut = true;
+                
                 await _servicioAutenticacion.cerrarSesion();
                 if (mounted) context.go(RutasAplicacion.inicioSesion);
               }

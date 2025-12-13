@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart';
 
 class ServicioAutenticacion {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -16,14 +17,18 @@ class ServicioAutenticacion {
   // Login con Google
   Future<UserCredential> iniciarSesionConGoogle() async {
     try {
+      debugPrint('Iniciando Google Sign In...');
       // 1. Seleccionar cuenta
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
+        debugPrint('Google Sign In cancelado por el usuario.');
         throw Exception('Inicio de sesión cancelado por el usuario');
       }
+      debugPrint('Usuario de Google obtenido: ${googleUser.email}');
 
       // 2. Obtener tokens
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      debugPrint('Tokens de Google obtenidos.');
 
       // 3. Crear credencial de Firebase
       final OAuthCredential credential = GoogleAuthProvider.credential(
@@ -32,13 +37,16 @@ class ServicioAutenticacion {
       );
 
       // 4. Loguear en Firebase
+      debugPrint('Iniciando sesión en Firebase con credenciales de Google...');
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      debugPrint('Sesión en Firebase exitosa: ${userCredential.user?.uid}');
       
       // Guardar usuario en Firestore si es nuevo
       await _guardarUsuarioEnFirestore(userCredential.user);
 
       return userCredential;
     } catch (e) {
+      debugPrint('Error detallado en Google Sign In: $e');
       // Si es una excepción nuestra, la relanzamos tal cual
       if (e.toString().contains('Inicio de sesión cancelado')) {
         rethrow;
@@ -89,8 +97,18 @@ class ServicioAutenticacion {
 
   // Cerrar Sesión
   Future<void> cerrarSesion() async {
-    await _googleSignIn.signOut();
-    await _auth.signOut();
+    // Intentar desconectar de Firebase primero (orden invertido para evitar conflictos)
+    try {
+      await _auth.signOut();
+    } catch (e) {
+      debugPrint('Error al cerrar sesión de Firebase: $e');
+    }
+
+    try {
+      await _googleSignIn.signOut();
+    } catch (e) {
+      debugPrint('Error al cerrar sesión de Google: $e');
+    }
   }
 
   // Guardar usuario en Firestore

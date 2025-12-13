@@ -118,7 +118,8 @@ class _PantallaCrearCapsulaState extends State<PantallaCrearCapsula> {
                 decoration: const InputDecoration(labelText: 'Categoría (ej. Ansiedad, Estudio)'),
               ),
               const SizedBox(height: 16),
-Media URL
+
+              // Media URL
               TextFormField(
                 controller: _mediaUrlControlador,
                 decoration: const InputDecoration(labelText: 'URL de Video o Imagen (Opcional)'),

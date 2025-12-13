@@ -19,6 +19,9 @@ class RutasAplicacion {
   static const String detalleCapsula = '/detalle-capsula';
   static const String configuracion = '/configuracion';
 
+  // Flag para permitir navegación al login durante el cierre de sesión
+  static bool isLoggingOut = false;
+
   static final GoRouter router = GoRouter(
     initialLocation: inicioSesion,
     refreshListenable: GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
@@ -63,6 +66,8 @@ class RutasAplicacion {
       final isLoggedIn = user != null;
       final isLoggingIn = state.uri.toString() == inicioSesion;
 
+      debugPrint('GoRouter Redirect: isLoggedIn=$isLoggedIn, path=${state.uri}, isLoggingOut=$isLoggingOut');
+
       // Si no está logueado y no está en inicioSesion, mandar a inicioSesion
       if (!isLoggedIn && !isLoggingIn) {
         return inicioSesion;
@@ -70,6 +75,11 @@ class RutasAplicacion {
 
       // Si ya está logueado
       if (isLoggedIn) {
+        // Si estamos cerrando sesión explícitamente, permitir ir al login
+        if (isLoggingOut) {
+          return null;
+        }
+
         // Verificar si el email está verificado (si usó email/password)
         // Nota: Google Auth siempre tiene emailVerified = true
         if (!user.emailVerified) {

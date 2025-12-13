@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../services/auth_service.dart';
+import '../routes/app_routes.dart';
 
 class PantallaLogin extends StatefulWidget {
   const PantallaLogin({super.key});
@@ -19,6 +21,13 @@ class _PantallaLoginState extends State<PantallaLogin> {
 
   bool _estaRegistrando = false;
   bool _estaCargando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Resetear el flag de logout al entrar al login
+    RutasAplicacion.isLoggingOut = false;
+  }
 
   @override
   void dispose() {
@@ -111,7 +120,10 @@ class _PantallaLoginState extends State<PantallaLogin> {
 
     try {
       await _servicioAutenticacion.iniciarSesionConGoogle();
-      // GoRouter redirigirá automáticamente
+      // Forzar redirección si el stream tarda en actualizar
+      if (mounted) {
+        context.go(RutasAplicacion.bienvenida);
+      }
     } catch (e) {
       if (mounted) {
         _mostrarError(e.toString().replaceAll('Exception: ', ''));

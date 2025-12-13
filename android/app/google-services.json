@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "915466423350-ertounobeci8hjsuag9qpp3c39246sce.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "cl.imah.neuroconecta",
+            "certificate_hash": "9116cf8428bcc1aea246393d98eadd4fa61372ee"
+          }
+        },
+        {
           "client_id": "915466423350-pt1ahl6e099h4c7f1st6b4pbgifb93p3.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -86,11 +94,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "915466423350-i8js1p5opm4e5ji9gvu3un3opoqfmagm.apps.googleusercontent.com",
+          "client_id": "915466423350-o37aitk3nm3qb6ejke7ohibp00uurk46.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.neuroconecta2",
-            "certificate_hash": "8d3c735f2ce5c7e37919f8efd0b1499030146aa8"
+            "certificate_hash": "9116cf8428bcc1aea246393d98eadd4fa61372ee"
           }
         },
         {

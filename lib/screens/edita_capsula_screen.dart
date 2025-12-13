@@ -153,15 +153,15 @@ class _PantallaEditarCapsulaState extends State<PantallaEditarCapsula> {
                 controller: _controladorCategoria,
                 decoration: const InputDecoration(labelText: 'Categoría'),
               ),
-              conMedia URL
+              const SizedBox(height: 16),
+
+              // Media URL
               TextFormField(
                 controller: _controladorMediaUrl,
                 decoration: const InputDecoration(labelText: 'URL de Video o Imagen (Opcional)'),
                 keyboardType: TextInputType.url,
               ),
               const SizedBox(height: 16),
-
-              // st SizedBox(height: 16),
 
               // Segmento
               DropdownButtonFormField<String>(
