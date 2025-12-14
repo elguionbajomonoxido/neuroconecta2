@@ -23,6 +23,7 @@ class _MediaViewerState extends State<MediaViewer> {
 
   bool _isVideo = false;
   bool _isYoutube = false;
+  bool _isUnsupported = false;
   bool _isDisposed = false;
 
   @override
@@ -79,33 +80,52 @@ class _MediaViewerState extends State<MediaViewer> {
     final url = widget.url!;
     final lowerUrl = url.toLowerCase();
 
+    // Reset flags
+    _isVideo = false;
+    _isYoutube = false;
+    _isUnsupported = false;
+
     // 1. Check YouTube
     final videoId = _convertUrlToId(url);
     if (videoId != null) {
       _isYoutube = true;
-      _isVideo = false;
       _youtubeVideoId = videoId;
       if (mounted) setState(() {});
       return;
     }
 
-    // 2. Check Video Files (incluyendo Drive si se detecta como video)
-    // A veces las URLs de Drive no terminan en extensión, así que es difícil saber si es video solo por URL.
-    // Pero si el usuario pone un link directo .mp4, entra aquí.
+    // 2. Check Video Files
     if (lowerUrl.endsWith('.mp4') ||
         lowerUrl.endsWith('.mov') ||
         lowerUrl.endsWith('.avi') ||
         lowerUrl.endsWith('.webm') ||
         lowerUrl.endsWith('.mkv')) {
       _isVideo = true;
-      _isYoutube = false;
       _initializeVideoPlayer();
-    } else {
-      // 3. Assume Image (o Drive Image)
-      _isVideo = false;
-      _isYoutube = false;
-      if (mounted) setState(() {});
+      return;
     }
+
+    // 3. Check Drive
+    if (url.contains('drive.google.com')) {
+      // Asumimos que es imagen por defecto. Si falla, el errorWidget lo manejará.
+      if (mounted) setState(() {});
+      return;
+    }
+
+    // 4. Check Image extensions (para asegurar que es imagen directa)
+    if (lowerUrl.endsWith('.jpg') ||
+        lowerUrl.endsWith('.jpeg') ||
+        lowerUrl.endsWith('.png') ||
+        lowerUrl.endsWith('.gif') ||
+        lowerUrl.endsWith('.webp') ||
+        lowerUrl.endsWith('.bmp')) {
+       if (mounted) setState(() {});
+       return;
+    }
+
+    // Si no es nada de lo anterior, es un link no soportado
+    _isUnsupported = true;
+    if (mounted) setState(() {});
   }
 
   void _openFullscreenImage(BuildContext context, String imageUrl) {
@@ -302,34 +322,77 @@ class _MediaViewerState extends State<MediaViewer> {
       );
     }
 
+    // --- LINK NO SOPORTADO / EXTERNO ---
+    if (_isUnsupported) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.link_off, color: Colors.orangeAccent, size: 40),
+            const SizedBox(height: 12),
+            const Text(
+              'Enlace externo no visualizable',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.url!,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () async {
+                final uri = Uri.parse(widget.url!);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Abrir en navegador'),
+            ),
+          ],
+        ),
+      );
+    }
+
     // --- YOUTUBE ---
     if (_isYoutube && _youtubeVideoId != null) {
       final thumbnailUrl = 'https://img.youtube.com/vi/$_youtubeVideoId/hqdefault.jpg';
       return GestureDetector(
         onTap: () => _openFullscreenYoutube(context, _youtubeVideoId!),
-        child: Container(
-          height: 200,
-          color: Colors.black,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CachedNetworkImage(
-                imageUrl: thumbnailUrl,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-                placeholder: (context, url) => Container(color: Colors.black12),
-                errorWidget: (context, url, error) => Container(color: Colors.black54),
-              ),
-              Container(
-                decoration: const BoxDecoration(
-                  color: Colors.black54,
-                  shape: BoxShape.circle,
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Container(
+            color: Colors.black,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CachedNetworkImage(
+                  imageUrl: thumbnailUrl,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  placeholder: (context, url) => Container(color: Colors.black12),
+                  errorWidget: (context, url, error) => Container(color: Colors.black54),
                 ),
-                padding: const EdgeInsets.all(16),
-                child: const Icon(Icons.play_arrow, color: Colors.white, size: 48),
-              ),
-            ],
+                Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: const Icon(Icons.play_arrow, color: Colors.white, size: 48),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -357,18 +420,51 @@ class _MediaViewerState extends State<MediaViewer> {
 
     return GestureDetector(
       onTap: () => _openFullscreenImage(context, displayUrl),
-      child: Container(
-        height: 300, // Altura fija para imágenes
-        color: Colors.black,
-        child: CachedNetworkImage(
-          imageUrl: displayUrl,
-          fadeInDuration: const Duration(milliseconds: 300),
-          fit: BoxFit.contain,
-          width: double.infinity,
-          placeholder: (context, url) => _buildLoading(),
-          errorWidget: (context, url, error) =>
-              _buildErrorWidget(error.toString()),
+      child: CachedNetworkImage(
+        imageUrl: displayUrl,
+        fadeInDuration: const Duration(milliseconds: 300),
+        fit: BoxFit.fitWidth, // Ajuste automático al ancho
+        width: double.infinity,
+        // Eliminamos altura fija para que se auto-ajuste
+        placeholder: (context, url) => const SizedBox(
+          height: 200, // Altura temporal mientras carga
+          child: Center(
+            child: CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 3,
+            ),
+          ),
         ),
+        errorWidget: (context, url, error) {
+          // Si falla (ej. es un video de Drive o archivo zip), mostramos la alerta
+          return Container(
+            padding: const EdgeInsets.all(16),
+            color: Colors.grey[900],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.insert_drive_file, color: Colors.white70, size: 48),
+                const SizedBox(height: 16),
+                const Text(
+                  'Archivo o Video de Drive',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final uri = Uri.parse(widget.url!);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  icon: const Icon(Icons.open_in_new),
+                  label: const Text('Abrir enlace'),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

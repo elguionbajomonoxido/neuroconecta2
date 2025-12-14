@@ -18,12 +18,6 @@ void main() async {
   final settingsController = ControladorConfiguracion();
   await settingsController.cargarConfiguracion();
 
-  // Forzar modo vertical (Portrait)
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-
   runApp(
     ChangeNotifierProvider.value(
       value: settingsController,
