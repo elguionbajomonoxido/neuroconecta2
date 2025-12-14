@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MediaViewer extends StatefulWidget {
   final String? url;
@@ -16,7 +17,9 @@ class MediaViewer extends StatefulWidget {
 class _MediaViewerState extends State<MediaViewer> {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
-  YoutubePlayerController? _youtubeController;
+
+  // YouTube state
+  String? _youtubeVideoId;
 
   bool _isVideo = false;
   bool _isYoutube = false;
@@ -49,10 +52,24 @@ class _MediaViewerState extends State<MediaViewer> {
     if (url.contains('drive.google.com')) {
       final id = _getDriveId(url);
       if (id != null) {
-        return 'https://drive.google.com/uc?export=view&id=$id';
+        // 'export=download' suele ser más fiable para obtener los bytes de la imagen
+        return 'https://drive.google.com/uc?export=download&id=$id';
       }
     }
     return url;
+  }
+
+  String? _convertUrlToId(String url) {
+    if (url.trim().isEmpty) return null;
+    for (var exp in [
+      RegExp(r"^https:\/\/(?:www\.|m\.)?youtube\.com\/watch\?v=([_\-a-zA-Z0-9]{11}).*$"),
+      RegExp(r"^https:\/\/(?:www\.|m\.)?youtube(?:-nocookie)?\.com\/embed\/([_\-a-zA-Z0-9]{11}).*$"),
+      RegExp(r"^https:\/\/youtu\.be\/([_\-a-zA-Z0-9]{11}).*$")
+    ]) {
+      Match? match = exp.firstMatch(url);
+      if (match != null && match.groupCount >= 1) return match.group(1);
+    }
+    return null;
   }
 
   void _initializeMedia() {
@@ -63,15 +80,18 @@ class _MediaViewerState extends State<MediaViewer> {
     final lowerUrl = url.toLowerCase();
 
     // 1. Check YouTube
-    final videoId = YoutubePlayer.convertUrlToId(url);
+    final videoId = _convertUrlToId(url);
     if (videoId != null) {
       _isYoutube = true;
       _isVideo = false;
-      _initializeYoutubePlayer(videoId);
+      _youtubeVideoId = videoId;
+      if (mounted) setState(() {});
       return;
     }
 
-    // 2. Check Video Files
+    // 2. Check Video Files (incluyendo Drive si se detecta como video)
+    // A veces las URLs de Drive no terminan en extensión, así que es difícil saber si es video solo por URL.
+    // Pero si el usuario pone un link directo .mp4, entra aquí.
     if (lowerUrl.endsWith('.mp4') ||
         lowerUrl.endsWith('.mov') ||
         lowerUrl.endsWith('.avi') ||
@@ -81,32 +101,47 @@ class _MediaViewerState extends State<MediaViewer> {
       _isYoutube = false;
       _initializeVideoPlayer();
     } else {
-      // 3. Assume Image
+      // 3. Assume Image (o Drive Image)
       _isVideo = false;
       _isYoutube = false;
       if (mounted) setState(() {});
     }
   }
 
-  void _initializeYoutubePlayer(String videoId) {
-    if (_isDisposed) return;
-
-    final controller = YoutubePlayerController(
-      initialVideoId: videoId,
-      flags: const YoutubePlayerFlags(
-        autoPlay: false,
-        mute: false,
-        enableCaption: true,
+  void _openFullscreenImage(BuildContext context, String imageUrl) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.contain,
+                placeholder: (context, url) => _buildLoading(),
+                errorWidget: (context, url, error) =>
+                    _buildErrorWidget(error.toString()),
+              ),
+            ),
+          ),
+        ),
       ),
     );
+  }
 
-    if (!mounted || _isDisposed) {
-      controller.dispose();
-      return;
-    }
-
-    _youtubeController = controller;
-    setState(() {});
+  void _openFullscreenYoutube(BuildContext context, String videoId) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => FullscreenYoutubePlayer(videoId: videoId),
+      ),
+    );
   }
 
   Future<void> _initializeVideoPlayer() async {
@@ -167,16 +202,6 @@ class _MediaViewerState extends State<MediaViewer> {
         debugPrint('Error disposing Chewie: $e');
       }
     }
-
-    if (_youtubeController != null) {
-      final yController = _youtubeController!;
-      _youtubeController = null;
-      try {
-        yController.dispose();
-      } catch (e) {
-        debugPrint('Error disposing YoutubePlayer: $e');
-      }
-    }
   }
 
   @override
@@ -194,22 +219,46 @@ class _MediaViewerState extends State<MediaViewer> {
           const Icon(Icons.error_outline, color: Colors.white70, size: 48),
           const SizedBox(height: 16),
           Text(
-            'No se pudo cargar el contenido',
-            style: const TextStyle(color: Colors.white70),
+            'No se pudo cargar el contenido\n$error',
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () {
-              _disposeControllers();
-              _initializeMedia();
-            },
-            icon: const Icon(Icons.refresh),
-            label: const Text('Reintentar'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white24,
-              foregroundColor: Colors.white,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  _disposeControllers();
+                  _initializeMedia();
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reintentar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white24,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  if (widget.url != null) {
+                    final uri = Uri.parse(widget.url!);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  }
+                },
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Abrir'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white24,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
           )
         ],
       ),
@@ -247,60 +296,58 @@ class _MediaViewerState extends State<MediaViewer> {
     if (_isDisposed) return const SizedBox.shrink();
 
     if (widget.url == null || widget.url!.isEmpty) {
-      return const Scaffold(
-          backgroundColor: Colors.black, body: SizedBox.shrink());
+      return const SizedBox(
+        height: 200,
+        child: Center(child: Text('URL no válida', style: TextStyle(color: Colors.white))),
+      );
     }
 
     // --- YOUTUBE ---
-    if (_isYoutube) {
-      if (_youtubeController != null) {
-        return YoutubePlayerBuilder(
-          player: YoutubePlayer(
-            controller: _youtubeController!,
-            showVideoProgressIndicator: true,
-            progressIndicatorColor: Colors.red,
-            progressColors: const ProgressBarColors(
-              playedColor: Colors.red,
-              handleColor: Colors.redAccent,
-            ),
-          ),
-          builder: (context, player) {
-            return Scaffold(
-              backgroundColor: Colors.black,
-              body: Stack(
-                children: [
-                  Center(child: player),
-                  // Botón de cierre flotante (solo visible si no está en fullscreen nativo)
-                  _buildCloseButton(context),
-                ],
+    if (_isYoutube && _youtubeVideoId != null) {
+      final thumbnailUrl = 'https://img.youtube.com/vi/$_youtubeVideoId/hqdefault.jpg';
+      return GestureDetector(
+        onTap: () => _openFullscreenYoutube(context, _youtubeVideoId!),
+        child: Container(
+          height: 200,
+          color: Colors.black,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CachedNetworkImage(
+                imageUrl: thumbnailUrl,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                placeholder: (context, url) => Container(color: Colors.black12),
+                errorWidget: (context, url, error) => Container(color: Colors.black54),
               ),
-            );
-          },
-        );
-      } else {
-        return Scaffold(
-            backgroundColor: Colors.black, body: _buildLoading());
-      }
+              Container(
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                padding: const EdgeInsets.all(16),
+                child: const Icon(Icons.play_arrow, color: Colors.white, size: 48),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     // --- VIDEO DIRECTO ---
     if (_isVideo) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            Center(
-              child: (_chewieController != null &&
-                      _videoPlayerController != null &&
-                      _videoPlayerController!.value.isInitialized)
-                  ? AspectRatio(
-                      aspectRatio: _videoPlayerController!.value.aspectRatio,
-                      child: Chewie(controller: _chewieController!),
-                    )
-                  : _buildLoading(),
-            ),
-            _buildCloseButton(context),
-          ],
+      return Container(
+        color: Colors.black,
+        child: Center(
+          child: (_chewieController != null &&
+                  _videoPlayerController != null &&
+                  _videoPlayerController!.value.isInitialized)
+              ? AspectRatio(
+                  aspectRatio: _videoPlayerController!.value.aspectRatio,
+                  child: Chewie(controller: _chewieController!),
+                )
+              : const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
         ),
       );
     }
@@ -308,29 +355,116 @@ class _MediaViewerState extends State<MediaViewer> {
     // --- IMAGEN (Drive / Network) ---
     final displayUrl = _getDisplayUrl(widget.url!);
 
+    return GestureDetector(
+      onTap: () => _openFullscreenImage(context, displayUrl),
+      child: Container(
+        height: 300, // Altura fija para imágenes
+        color: Colors.black,
+        child: CachedNetworkImage(
+          imageUrl: displayUrl,
+          fadeInDuration: const Duration(milliseconds: 300),
+          fit: BoxFit.contain,
+          width: double.infinity,
+          placeholder: (context, url) => _buildLoading(),
+          errorWidget: (context, url, error) =>
+              _buildErrorWidget(error.toString()),
+        ),
+      ),
+    );
+  }
+}
+
+class FullscreenYoutubePlayer extends StatefulWidget {
+  final String videoId;
+  const FullscreenYoutubePlayer({super.key, required this.videoId});
+
+  @override
+  State<FullscreenYoutubePlayer> createState() => _FullscreenYoutubePlayerState();
+}
+
+class _FullscreenYoutubePlayerState extends State<FullscreenYoutubePlayer> {
+  late YoutubePlayerController _controller;
+  bool _hasPlayerError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = YoutubePlayerController.fromVideoId(
+      videoId: widget.videoId,
+      params: const YoutubePlayerParams(
+        showControls: true,
+        showFullscreenButton: true,
+        enableCaption: true,
+        origin: 'https://www.youtube-nocookie.com',
+      ),
+    );
+
+    _controller.listen((value) {
+      if (value.hasError) {
+        if (mounted && !_hasPlayerError) {
+          setState(() {
+            _hasPlayerError = true;
+          });
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hasPlayerError) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 40),
+              const SizedBox(height: 10),
+              const Text(
+                "No se puede reproducir este video dentro de la app.",
+                style: TextStyle(color: Colors.white),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final urlToOpen = "https://www.youtube.com/watch?v=${widget.videoId}";
+                  final uri = Uri.parse(urlToOpen);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
+                icon: const Icon(Icons.open_in_new),
+                label: const Text("Abrir en YouTube"),
+              )
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Center(
-            child: InteractiveViewer(
-              panEnabled: true,
-              minScale: 0.5,
-              maxScale: 4.0,
-              child: CachedNetworkImage(
-                imageUrl: displayUrl,
-                fadeInDuration: const Duration(milliseconds: 300),
-                fit: BoxFit.contain,
-                width: double.infinity,
-                height: double.infinity,
-                placeholder: (context, url) => _buildLoading(),
-                errorWidget: (context, url, error) =>
-                    _buildErrorWidget(error.toString()),
-              ),
-            ),
-          ),
-          _buildCloseButton(context),
-        ],
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Center(
+        child: YoutubePlayer(
+          controller: _controller,
+          aspectRatio: 16 / 9,
+        ),
       ),
     );
   }

@@ -53,7 +53,6 @@ class Capsula {
       'segmento': segmento,
       'esBorrador': esBorrador,
       'mediaUrl': mediaUrl,
-      'esBorrador': esBorrador,
       'creadoPorUid': creadoPorUid,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
