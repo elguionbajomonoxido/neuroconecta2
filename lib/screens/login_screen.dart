@@ -21,6 +21,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
 
   bool _estaRegistrando = false;
   bool _estaCargando = false;
+  bool _contrasenaVisible = false;
 
   @override
   void initState() {
@@ -54,6 +55,62 @@ class _PantallaLoginState extends State<PantallaLogin> {
     if (!_estaRegistrando) return null;
     if (value == null || value.isEmpty) return 'El nombre es obligatorio';
     return null;
+  }
+
+  // Método para mostrar el diálogo de recuperación
+  void _showForgotPasswordDialog() {
+    final TextEditingController resetEmailController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Recuperar Contraseña'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Ingresa tu correo para recibir un enlace de restablecimiento.'),
+            const SizedBox(height: 10),
+            TextField(
+              controller: resetEmailController,
+              decoration: const InputDecoration(
+                labelText: 'Correo Electrónico',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.emailAddress,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final email = resetEmailController.text.trim();
+              if (email.isEmpty) return;
+              
+              Navigator.pop(context); // Cerrar diálogo
+              
+              try {
+                await _servicioAutenticacion.enviarCorreoRecuperacionContrasena(email);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Correo de recuperación enviado. Revisa tu bandeja.')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: const Text('Enviar'),
+          ),
+        ],
+      ),
+    );
   }
 
   // Acciones
@@ -206,16 +263,39 @@ class _PantallaLoginState extends State<PantallaLogin> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _controladorContrasena,
-                      obscureText: true,
-                      decoration: const InputDecoration(
+                      obscureText: !_contrasenaVisible,
+                      decoration: InputDecoration(
                         labelText: 'Contraseña',
-                        prefixIcon: Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _contrasenaVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _contrasenaVisible = !_contrasenaVisible;
+                            });
+                          },
+                        ),
                       ),
                       validator: _validarContrasena,
                     ),
                   ],
                 ),
               ),
+              
+              // Botón Olvidé mi contraseña
+              if (!_estaRegistrando)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _showForgotPasswordDialog,
+                    child: const Text('¿Olvidaste tu contraseña?'),
+                  ),
+                ),
+
               const SizedBox(height: 24),
 
               // Botón Principal (Login/Registro)

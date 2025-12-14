@@ -33,6 +33,215 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
 
   // --- Lógica de Perfil ---
 
+  // --- CAMBIAR CONTRASEÑA ---
+  void _showChangePasswordDialog() {
+    final currentPassController = TextEditingController();
+    final newPassController = TextEditingController();
+    final confirmPassController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        bool currentPassVisible = false;
+        bool newPassVisible = false;
+        bool confirmPassVisible = false;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Cambiar Contraseña'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: currentPassController,
+                      decoration: InputDecoration(
+                        labelText: 'Contraseña Actual',
+                        suffixIcon: IconButton(
+                          icon: Icon(currentPassVisible ? Icons.visibility : Icons.visibility_off),
+                          onPressed: () => setState(() => currentPassVisible = !currentPassVisible),
+                        ),
+                      ),
+                      obscureText: !currentPassVisible,
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: newPassController,
+                      decoration: InputDecoration(
+                        labelText: 'Nueva Contraseña',
+                        suffixIcon: IconButton(
+                          icon: Icon(newPassVisible ? Icons.visibility : Icons.visibility_off),
+                          onPressed: () => setState(() => newPassVisible = !newPassVisible),
+                        ),
+                      ),
+                      obscureText: !newPassVisible,
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: confirmPassController,
+                      decoration: InputDecoration(
+                        labelText: 'Confirmar Nueva Contraseña',
+                        suffixIcon: IconButton(
+                          icon: Icon(confirmPassVisible ? Icons.visibility : Icons.visibility_off),
+                          onPressed: () => setState(() => confirmPassVisible = !confirmPassVisible),
+                        ),
+                      ),
+                      obscureText: !confirmPassVisible,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (newPassController.text != confirmPassController.text) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Las nuevas contraseñas no coinciden')),
+                      );
+                      return;
+                    }
+                    if (newPassController.text.length < 6) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('La contraseña debe tener al menos 6 caracteres')),
+                      );
+                      return;
+                    }
+
+                    try {
+                      // Mostrar indicador de carga
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (c) => const Center(child: CircularProgressIndicator()),
+                      );
+
+                      await _servicioAutenticacion.cambiarContrasena(
+                        currentPassController.text,
+                        newPassController.text,
+                      );
+
+                      if (mounted) {
+                        Navigator.pop(context); // Cerrar loading
+                        Navigator.pop(context); // Cerrar diálogo de cambio
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Contraseña actualizada correctamente')),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        Navigator.pop(context); // Cerrar loading
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Actualizar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // --- CAMBIAR CORREO ---
+  void _showChangeEmailDialog() {
+    final currentPassController = TextEditingController();
+    final newEmailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        bool currentPassVisible = false;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Cambiar Correo Electrónico'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Necesitamos verificar tu identidad para cambiar el correo.'),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: currentPassController,
+                    decoration: InputDecoration(
+                      labelText: 'Contraseña Actual',
+                      suffixIcon: IconButton(
+                        icon: Icon(currentPassVisible ? Icons.visibility : Icons.visibility_off),
+                        onPressed: () => setState(() => currentPassVisible = !currentPassVisible),
+                      ),
+                    ),
+                    obscureText: !currentPassVisible,
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: newEmailController,
+                    decoration: const InputDecoration(labelText: 'Nuevo Correo'),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (newEmailController.text.isEmpty || currentPassController.text.isEmpty) return;
+
+                    try {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (c) => const Center(child: CircularProgressIndicator()),
+                      );
+
+                      await _servicioAutenticacion.cambiarEmail(
+                        currentPassController.text,
+                        newEmailController.text.trim(),
+                      );
+
+                      if (mounted) {
+                        Navigator.pop(context); // Cerrar loading
+                        Navigator.pop(context); // Cerrar diálogo
+                        
+                        // Mostrar mensaje explicativo importante
+                        showDialog(
+                          context: context,
+                          builder: (c) => AlertDialog(
+                            title: const Text('Verificación Enviada'),
+                            content: Text(
+                              'Se ha enviado un correo de verificación a ${newEmailController.text}. '
+                              'Debes confirmar el cambio en ese enlace para que se actualice tu cuenta.'
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(c), child: const Text('Entendido'))
+                            ],
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        Navigator.pop(context); // Cerrar loading
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Actualizar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _actualizarNombreUsuario() async {
     final user = _usuarioActual;
     if (user == null) return;
@@ -191,6 +400,25 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
           ),
 
           const Divider(height: 32),
+
+          // --- Sección Seguridad (Solo para usuarios con Email/Password) ---
+          if (_usuarioActual?.providerData.any((p) => p.providerId == 'password') ?? false) ...[
+            _construirEncabezadoSeccion(context, 'Seguridad'),
+            ListTile(
+              leading: const Icon(Icons.lock_outline),
+              title: const Text('Cambiar Contraseña'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: _showChangePasswordDialog,
+            ),
+            ListTile(
+              leading: const Icon(Icons.email_outlined),
+              title: const Text('Cambiar Correo Electrónico'),
+              subtitle: Text(_usuarioActual?.email ?? ''),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: _showChangeEmailDialog,
+            ),
+            const Divider(height: 32),
+          ],
 
           // --- Sección Cuenta ---
           _construirEncabezadoSeccion(context, 'Cuenta'),

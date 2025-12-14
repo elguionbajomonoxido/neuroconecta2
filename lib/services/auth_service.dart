@@ -95,6 +95,80 @@ class ServicioAutenticacion {
     }
   }
 
+  // Enviar correo de recuperación de contraseña
+  Future<void> enviarCorreoRecuperacionContrasena(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      throw _manejarExcepcionAuth(e);
+    }
+  }
+
+  // Cambiar contraseña (requiere re-autenticación si ha pasado mucho tiempo)
+  Future<void> cambiarContrasena(String currentPassword, String newPassword) async {
+    final user = _auth.currentUser;
+    if (user == null) throw 'No hay usuario autenticado';
+
+    final cred = EmailAuthProvider.credential(
+      email: user.email!,
+      password: currentPassword,
+    );
+
+    try {
+      // Re-autenticar al usuario antes de operaciones sensibles
+      await user.reauthenticateWithCredential(cred);
+      await user.updatePassword(newPassword);
+    } catch (e) {
+      throw _manejarExcepcionAuth(e);
+    }
+  }
+
+  // Cambiar correo electrónico
+  Future<void> cambiarEmail(String currentPassword, String newEmail) async {
+    final user = _auth.currentUser;
+    if (user == null) throw 'No hay usuario autenticado';
+
+    final cred = EmailAuthProvider.credential(
+      email: user.email!,
+      password: currentPassword,
+    );
+
+    try {
+      await user.reauthenticateWithCredential(cred);
+      await user.verifyBeforeUpdateEmail(newEmail); 
+      // Nota: verifyBeforeUpdateEmail envía un correo de verificación al nuevo email.
+      // El cambio no se completa hasta que se verifica.
+    } catch (e) {
+      throw _manejarExcepcionAuth(e);
+    }
+  }
+
+  Exception _manejarExcepcionAuth(dynamic e) {
+    if (e is FirebaseAuthException) {
+      switch (e.code) {
+        case 'user-not-found':
+          return Exception('No existe usuario con ese correo.');
+        case 'wrong-password':
+          return Exception('Contraseña incorrecta.');
+        case 'email-already-in-use':
+          return Exception('El correo ya está en uso por otra cuenta.');
+        case 'invalid-email':
+          return Exception('El formato del correo no es válido.');
+        case 'weak-password':
+          return Exception('La contraseña es muy débil.');
+        case 'requires-recent-login':
+          return Exception('Por seguridad, inicia sesión nuevamente antes de realizar este cambio.');
+        case 'user-disabled':
+          return Exception('Este usuario ha sido deshabilitado.');
+        case 'credential-already-in-use':
+          return Exception('Esta credencial ya está asociada a otra cuenta.');
+        default:
+          return Exception('Error de autenticación: ${e.message}');
+      }
+    }
+    return Exception('Ocurrió un error inesperado: $e');
+  }
+
   // Cerrar Sesión
   Future<void> cerrarSesion() async {
     // Intentar desconectar de Firebase primero (orden invertido para evitar conflictos)
@@ -130,25 +204,5 @@ class ServicioAutenticacion {
     }
   }
 
-  // Manejo de errores de Firebase Auth
-  Exception _manejarExcepcionAuth(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'email-already-in-use':
-        return Exception('El correo ya está registrado.');
-      case 'invalid-email':
-        return Exception('El correo no es válido.');
-      case 'weak-password':
-        return Exception('La contraseña es muy débil.');
-      case 'user-disabled':
-        return Exception('Este usuario ha sido deshabilitado.');
-      case 'user-not-found':
-        return Exception('No se encontró usuario con este correo.');
-      case 'wrong-password':
-        return Exception('Contraseña incorrecta.');
-      case 'credential-already-in-use':
-        return Exception('Esta credencial ya está asociada a otra cuenta.');
-      default:
-        return Exception('Error de autenticación: ${e.message}');
-    }
-  }
+
 }

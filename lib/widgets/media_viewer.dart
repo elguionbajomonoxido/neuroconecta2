@@ -132,22 +132,30 @@ class _MediaViewerState extends State<MediaViewer> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => Scaffold(
-          backgroundColor: Colors.black,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           appBar: AppBar(
-            backgroundColor: Colors.black,
-            iconTheme: const IconThemeData(color: Colors.white),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
           ),
-          body: Center(
+          body: SizedBox.expand(
             child: InteractiveViewer(
               panEnabled: true,
+              boundaryMargin: const EdgeInsets.all(20.0),
               minScale: 0.5,
               maxScale: 4.0,
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                fit: BoxFit.contain,
-                placeholder: (context, url) => _buildLoading(),
-                errorWidget: (context, url, error) =>
-                    _buildErrorWidget(error.toString()),
+              child: Center(
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.contain,
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height,
+                  placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                  errorWidget: (context, url, error) => Container(
+                    color: Colors.black,
+                    child: _buildErrorWidget(error.toString()),
+                  ),
+                ),
               ),
             ),
           ),
@@ -281,32 +289,6 @@ class _MediaViewerState extends State<MediaViewer> {
             ],
           )
         ],
-      ),
-    );
-  }
-
-  Widget _buildLoading() {
-    return const Center(
-      child: CircularProgressIndicator(
-        color: Colors.white,
-        strokeWidth: 3,
-      ),
-    );
-  }
-
-  Widget _buildCloseButton(BuildContext context) {
-    return Positioned(
-      top: MediaQuery.of(context).padding.top + 10,
-      right: 16,
-      child: Material(
-        color: Colors.black45, // Fondo semitransparente
-        shape: const CircleBorder(),
-        clipBehavior: Clip.hardEdge,
-        child: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-          tooltip: 'Cerrar',
-        ),
       ),
     );
   }
