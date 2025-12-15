@@ -21,6 +21,7 @@ class _PantallaEditarCapsulaState extends State<PantallaEditarCapsula> {
   late TextEditingController _controladorContenido;
   late TextEditingController _controladorCategoria;
   late TextEditingController _controladorMediaUrl;
+  late TextEditingController _controladorAutor;
   
   String _segmento = 'adultos';
   bool _esBorrador = false;
@@ -35,6 +36,7 @@ class _PantallaEditarCapsulaState extends State<PantallaEditarCapsula> {
     _controladorContenido = TextEditingController();
     _controladorCategoria = TextEditingController();
     _controladorMediaUrl = TextEditingController();
+    _controladorAutor = TextEditingController();
     _cargarCapsula();
   }
 
@@ -48,6 +50,7 @@ class _PantallaEditarCapsulaState extends State<PantallaEditarCapsula> {
       _controladorContenido.text = capsula.contenidoLargo;
       _controladorCategoria.text = capsula.categoria;
       _controladorMediaUrl.text = capsula.mediaUrl ?? '';
+      _controladorAutor.text = capsula.autor;
       
       setState(() {
         _segmento = capsula.segmento;
@@ -71,6 +74,7 @@ class _PantallaEditarCapsulaState extends State<PantallaEditarCapsula> {
     _controladorContenido.dispose();
     _controladorMediaUrl.dispose();
     _controladorCategoria.dispose();
+    _controladorAutor.dispose();
     super.dispose();
   }
 
@@ -86,6 +90,7 @@ class _PantallaEditarCapsulaState extends State<PantallaEditarCapsula> {
         'contenidoLargo': _controladorContenido.text.trim(),
         'categoria': _controladorCategoria.text.trim(),
         'segmento': _segmento,
+        'autor': _controladorAutor.text.trim(),
         'mediaUrl': _controladorMediaUrl.text.trim().isEmpty ? null : _controladorMediaUrl.text.trim(),
         'esBorrador': _esBorrador,
       };
@@ -152,6 +157,13 @@ class _PantallaEditarCapsulaState extends State<PantallaEditarCapsula> {
               TextFormField(
                 controller: _controladorCategoria,
                 decoration: const InputDecoration(labelText: 'Categoría'),
+              ),
+              const SizedBox(height: 16),
+
+              // Autor
+              TextFormField(
+                controller: _controladorAutor,
+                decoration: const InputDecoration(labelText: 'Autor'),
               ),
               const SizedBox(height: 16),
 

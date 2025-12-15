@@ -10,6 +10,7 @@ class Capsula {
   final bool esBorrador;
   final String? mediaUrl;
   final String creadoPorUid;
+  final String autor;
   final DateTime createdAt;
   final DateTime? updatedAt;
   
@@ -23,6 +24,7 @@ class Capsula {
     required this.esBorrador,
     this.mediaUrl,
     required this.creadoPorUid,
+    required this.autor,
     required this.createdAt,
     this.updatedAt,
   });
@@ -39,6 +41,7 @@ class Capsula {
       esBorrador: data['esBorrador'] ?? false,
       mediaUrl: data['mediaUrl'],
       creadoPorUid: data['creadoPorUid'] ?? '',
+      autor: data['autor'] ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
     );
@@ -54,6 +57,7 @@ class Capsula {
       'esBorrador': esBorrador,
       'mediaUrl': mediaUrl,
       'creadoPorUid': creadoPorUid,
+      'autor': autor,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
     };

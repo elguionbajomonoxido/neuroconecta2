@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
 import '../models/retroalimentacion.dart';
 import '../services/feedback_service.dart';
 import 'estrella_rating.dart';
@@ -18,11 +20,82 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
   final ServicioRetroalimentacion _servicioRetroalimentacion = ServicioRetroalimentacion();
   int _calificacion = 0;
   bool _estaEnviando = false;
+  String? _feedbackId;
+  List<String> _listaGroserias = [];
 
   @override
   void dispose() {
     _controladorComentario.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _cargarListaGroserias();
+    if (!mounted) return;
+    await _cargarSiExiste();
+  }
+
+  Future<void> _cargarSiExiste() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final existente = await _servicioRetroalimentacion.obtenerRetroalimentacionUsuario(widget.capsulaId, user.uid);
+    if (existente != null) {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _feedbackId = existente.id;
+          _calificacion = existente.estrellas;
+          _controladorComentario.text = existente.comentario;
+        });
+      });
+    }
+  }
+
+  Future<void> _cargarListaGroserias() async {
+    // Intentar cargar desde Firestore primero
+    try {
+      final desdeFirestore = await _servicioRetroalimentacion.obtenerListaGroseriasFirestore();
+      if (desdeFirestore.isNotEmpty) {
+        _listaGroserias = desdeFirestore;
+        return;
+      }
+    } catch (_) {
+      // continuar a asset
+    }
+
+    // Luego intentar cargar desde asset JSON
+    try {
+      final raw = await rootBundle.loadString('assets/groserias.json');
+      final data = json.decode(raw);
+      if (data is List) {
+        _listaGroserias = data.map((e) => e.toString()).toList();
+        return;
+      }
+    } catch (_) {
+      // continuar a fallback
+    }
+
+    // Fallback por defecto si todo falla
+    _listaGroserias = ['puta', 'mierda', 'gilipollas', 'idiota', 'imbecil', 'cabron', 'pendejo'];
+  }
+
+  String _sanitizarComentario(String texto) {
+    final malas = _listaGroserias.isNotEmpty
+        ? _listaGroserias
+        : ['puta', 'mierda', 'gilipollas', 'idiota', 'imbecil', 'cabron', 'pendejo'];
+    var limpio = texto;
+    for (final m in malas) {
+      final regex = RegExp('\\b' + RegExp.escape(m) + '\\b', caseSensitive: false);
+      limpio = limpio.replaceAll(regex, '*' * m.length);
+    }
+    return limpio;
   }
 
   Future<void> _enviarRetroalimentacion() async {
@@ -45,26 +118,35 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('Usuario no autenticado');
 
-      final feedback = Retroalimentacion(
-        id: '',
-        capsulaId: widget.capsulaId,
-        usuarioUid: user.uid,
-        nombreUsuario: user.displayName ?? 'Usuario',
-        comentario: _controladorComentario.text.trim(),
-        estrellas: _calificacion,
-        createdAt: DateTime.now(),
-      );
+      final comentarioLimpio = _sanitizarComentario(_controladorComentario.text.trim());
 
-      await _servicioRetroalimentacion.agregarRetroalimentacion(feedback);
+      if (_feedbackId != null) {
+        // Actualizar existente
+        await _servicioRetroalimentacion.actualizarRetroalimentacion(_feedbackId!, {
+          'comentario': comentarioLimpio,
+          'estrellas': _calificacion,
+        });
+      } else {
+        final feedback = Retroalimentacion(
+          id: '',
+          capsulaId: widget.capsulaId,
+          usuarioUid: user.uid,
+          nombreUsuario: user.displayName ?? 'Usuario',
+          comentario: comentarioLimpio,
+          estrellas: _calificacion,
+          createdAt: DateTime.now(),
+        );
+
+        await _servicioRetroalimentacion.agregarRetroalimentacion(feedback);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('¡Gracias por tu opinión!'), backgroundColor: Colors.green),
         );
-        _controladorComentario.clear();
-        setState(() {
-          _calificacion = 0;
-        });
+        // Mantener el comentario y calificación para permitir edición; si se desea limpiar descomentar
+        //_controladorComentario.clear();
+        //setState(() { _calificacion = 0; _feedbackId = null; });
       }
     } catch (e) {
       if (mounted) {

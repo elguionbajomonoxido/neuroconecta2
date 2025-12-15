@@ -7,49 +7,62 @@ import '../services/firestore_service.dart';
 import '../widgets/retroalimentacion_list.dart';
 import '../widgets/retroalimentacion_form.dart';
 import '../widgets/media_viewer.dart';
+import '../services/feedback_service.dart';
+import '../widgets/estrella_rating.dart';
+                // Header Info: chips a la izquierda (expandible) y valoración a la derecha (ancho fijo)
+                Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Flexible(
+                            child: Chip(
+                              label: Text(capsula.categoria),
+                              backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Chip(
+                              label: Text(capsula.segmento.toUpperCase()),
+                              backgroundColor: Colors.grey.shade200,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
-class PantallaDetalleCapsula extends StatefulWidget {
-  final String capsuleId;
-
-  const PantallaDetalleCapsula({super.key, required this.capsuleId});
-
-  @override
-  State<PantallaDetalleCapsula> createState() => _PantallaDetalleCapsulaState();
-}
-
-class _PantallaDetalleCapsulaState extends State<PantallaDetalleCapsula> {
-  final ServicioFirestore _servicioFirestore = ServicioFirestore();
-  bool _esAdmin = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _verificarRol();
-  }
-
-  Future<void> _verificarRol() async {
-    final esAdmin = await _servicioFirestore.esAdmin();
-    if (mounted) {
-      setState(() {
-        _esAdmin = esAdmin;
-      });
-    }
-  }
-
-  Future<void> _eliminarCapsula(BuildContext context) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar Cápsula'),
-        content: const Text('¿Estás seguro? Esta acción no se puede deshacer.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+                    // Mostrar valoración promedio (derecha, ancho fijo)
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _servicioRetro.obtenerEstadisticasCapsula(capsula.id),
+                      builder: (context, snap) {
+                        if (snap.connectionState == ConnectionState.waiting) {
+                          return const SizedBox(width: 80, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+                        }
+                        final data = snap.data ?? {'avg': 0.0, 'count': 0};
+                        final avg = (data['avg'] as num?)?.toDouble() ?? 0.0;
+                        final count = (data['count'] as int?) ?? 0;
+                        return SizedBox(
+                          width: 140,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ClasificacionEstrellas(calificacion: avg.round(), tamano: 16),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  count > 0 ? '${avg.toStringAsFixed(1)} ($count)' : 'Sin valoraciones',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
     );
 
     if (confirm == true && mounted) {
@@ -122,6 +135,39 @@ class _PantallaDetalleCapsulaState extends State<PantallaDetalleCapsula> {
                     Chip(
                       label: Text(capsula.segmento.toUpperCase()),
                       backgroundColor: Colors.grey.shade200,
+                    ),
+                    const Spacer(),
+                    // Mostrar valoración promedio
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _servicioRetro.obtenerEstadisticasCapsula(capsula.id),
+                      builder: (context, snap) {
+                        if (snap.connectionState == ConnectionState.waiting) {
+                          return const SizedBox(width: 80, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+                        }
+                        final data = snap.data ?? {'avg': 0.0, 'count': 0};
+                        final avg = (data['avg'] as num?)?.toDouble() ?? 0.0;
+                        final count = (data['count'] as int?) ?? 0;
+                        return SizedBox(
+                          width: 140,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ClasificacionEstrellas(calificacion: avg.round(), tamano: 16),
+                              const SizedBox(width: 6),
+                                  Flexible(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        count > 0 ? '${avg.toStringAsFixed(1)} ($count)' : 'Sin valoraciones',
+                                        style: Theme.of(context).textTheme.bodySmall,
+                                      ),
+                                    ),
+                                  ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

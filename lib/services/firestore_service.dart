@@ -50,7 +50,10 @@ class ServicioFirestore {
 
   // Crear cápsula
   Future<void> agregarCapsula(Capsula capsula) async {
-    await _db.collection('capsulas').add(capsula.aMapa());
+    // Al crear, usar serverTimestamp para createdAt y evitar confiar en el reloj del cliente
+    final mapa = Map<String, dynamic>.from(capsula.aMapa());
+    mapa['createdAt'] = FieldValue.serverTimestamp();
+    await _db.collection('capsulas').add(mapa);
   }
 
   // Actualizar cápsula

@@ -21,6 +21,7 @@ class _PantallaCrearCapsulaState extends State<PantallaCrearCapsula> {
   final TextEditingController _contenidoControlador = TextEditingController();
   final TextEditingController _categoriaControlador = TextEditingController();
   final TextEditingController _mediaUrlControlador = TextEditingController();
+  final TextEditingController _autorControlador = TextEditingController();
   
   String _segmento = 'adultos'; // Valor por defecto
   bool _esBorrador = false;
@@ -33,7 +34,17 @@ class _PantallaCrearCapsulaState extends State<PantallaCrearCapsula> {
     _contenidoControlador.dispose();
     _categoriaControlador.dispose();
     _mediaUrlControlador.dispose();
+    _autorControlador.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && user.displayName != null) {
+      _autorControlador.text = user.displayName!;
+    }
   }
 
   Future<void> _guardarCapsula() async {
@@ -54,6 +65,7 @@ class _PantallaCrearCapsulaState extends State<PantallaCrearCapsula> {
         segmento: _segmento,
         esBorrador: _esBorrador,
         mediaUrl: _mediaUrlControlador.text.trim().isEmpty ? null : _mediaUrlControlador.text.trim(),
+        autor: _autorControlador.text.trim(),
         creadoPorUid: user.uid,
         createdAt: DateTime.now(),
       );
@@ -100,6 +112,13 @@ class _PantallaCrearCapsulaState extends State<PantallaCrearCapsula> {
                   if (value.length < 3) return 'Mínimo 3 caracteres';
                   return null;
                 },
+              ),
+              const SizedBox(height: 16),
+
+              // Autor
+              TextFormField(
+                controller: _autorControlador,
+                decoration: const InputDecoration(labelText: 'Autor'),
               ),
               const SizedBox(height: 16),
 
