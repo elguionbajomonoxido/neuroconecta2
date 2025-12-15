@@ -1,10 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import '../models/retroalimentacion.dart';
 import '../services/feedback_service.dart';
 import 'estrella_rating.dart';
 
-class ListaRetroalimentacion extends StatelessWidget {
+class ListaRetroalimentacion extends StatefulWidget {
   final String capsulaId;
   final bool esAdmin;
 
@@ -15,12 +18,66 @@ class ListaRetroalimentacion extends StatelessWidget {
   });
 
   @override
+  State<ListaRetroalimentacion> createState() => _ListaRetroalimentacionState();
+}
+
+class _ListaRetroalimentacionState extends State<ListaRetroalimentacion> {
+  final ServicioRetroalimentacion _servicio = ServicioRetroalimentacion();
+  List<String> _listaGroserias = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarGroserias();
+  }
+
+  Future<void> _cargarGroserias() async {
+    try {
+      final desdeFirestore = await _servicio.obtenerListaGroseriasFirestore();
+      if (desdeFirestore.isNotEmpty) {
+        if (!mounted) return;
+        setState(() => _listaGroserias = desdeFirestore);
+        return;
+      }
+    } catch (_) {
+      // ignore and fallback
+    }
+
+    // fallback to asset
+    try {
+      final raw = await rootBundle.loadString('assets/groserias.json');
+      final data = json.decode(raw);
+      if (data is List) {
+        if (!mounted) return;
+        setState(() => _listaGroserias = data.map((e) => e.toString()).toList());
+        return;
+      }
+    } catch (_) {
+      // final fallback below
+    }
+
+    if (!mounted) return;
+    setState(() => _listaGroserias = ['puta', 'mierda', 'gilipollas']);
+  }
+
+  String _sanitizarComentario(String texto) {
+    final malas = _listaGroserias.isNotEmpty
+        ? _listaGroserias
+        : ['puta', 'mierda', 'gilipollas'];
+    var limpio = texto;
+    for (final m in malas) {
+      final regex = RegExp('\\b' + RegExp.escape(m) + '\\b', caseSensitive: false);
+      limpio = limpio.replaceAll(regex, '*' * m.length);
+    }
+    return limpio;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final servicioRetroalimentacion = ServicioRetroalimentacion();
     final usuarioActual = FirebaseAuth.instance.currentUser;
 
     return StreamBuilder<List<Retroalimentacion>>(
-      stream: servicioRetroalimentacion.obtenerRetroalimentacionPorCapsula(capsulaId),
+      stream: _servicio.obtenerRetroalimentacionPorCapsula(widget.capsulaId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -46,7 +103,7 @@ class ListaRetroalimentacion extends StatelessWidget {
           itemBuilder: (context, index) {
             final item = feedbacks[index];
             final esPropietario = usuarioActual?.uid == item.usuarioUid;
-            final puedeEliminar = esAdmin || esPropietario;
+            final puedeEliminar = widget.esAdmin || esPropietario;
 
             return ListTile(
               contentPadding: EdgeInsets.zero,
@@ -72,7 +129,7 @@ class ListaRetroalimentacion extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 4),
-                  Text(item.comentario),
+                  Text(_sanitizarComentario(item.comentario)),
                   const SizedBox(height: 4),
                   Text(
                     _formatearFecha(item.createdAt),
@@ -83,7 +140,7 @@ class ListaRetroalimentacion extends StatelessWidget {
               trailing: puedeEliminar
                   ? IconButton(
                       icon: const Icon(Icons.delete_outline, size: 20, color: Colors.grey),
-                      onPressed: () => _confirmarEliminacion(context, servicioRetroalimentacion, item.id),
+                      onPressed: () => _confirmarEliminacion(context, _servicio, item.id),
                     )
                   : null,
             );

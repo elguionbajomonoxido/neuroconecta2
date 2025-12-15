@@ -1,0 +1,24 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "retroalimentaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "capsulaId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": []
+}

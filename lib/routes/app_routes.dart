@@ -9,6 +9,7 @@ import '../screens/detalles_capsula_screen.dart';
 import '../screens/crea_capsula_screen.dart';
 import '../screens/edita_capsula_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/editar_groserias_screen.dart';
 
 class RutasAplicacion {
   static const String inicioSesion = '/inicio-sesion';
@@ -18,6 +19,7 @@ class RutasAplicacion {
   static const String editarCapsula = '/editar-capsula';
   static const String detalleCapsula = '/detalle-capsula';
   static const String configuracion = '/configuracion';
+  static const String editarGroserias = '/config/editar-groserias';
 
   // Flag para permitir navegación al login durante el cierre de sesión
   static bool isLoggingOut = false;
@@ -41,6 +43,10 @@ class RutasAplicacion {
       GoRoute(
         path: configuracion,
         builder: (context, state) => const PaginaConfiguracion(),
+      ),
+      GoRoute(
+        path: editarGroserias,
+        builder: (context, state) => const EditarGroseriasScreen(),
       ),
       GoRoute(
         path: crearCapsula,

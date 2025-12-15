@@ -85,6 +85,15 @@ class ServicioRetroalimentacion {
     return [];
   }
 
+  // Actualizar lista de groserías en Firestore (doc: 'config/groserias', campo 'palabras' como array)
+  Future<void> actualizarListaGroseriasFirestore(List<String> palabras) async {
+    try {
+      await _db.collection('config').doc('groserias').set({'palabras': palabras});
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // Obtener estadísticas (promedio y conteo) para una capsula
   Future<Map<String, dynamic>> obtenerEstadisticasCapsula(String capsulaId) async {
     final snapshot = await _db

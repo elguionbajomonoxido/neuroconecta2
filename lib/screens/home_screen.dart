@@ -22,6 +22,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
   final User? _usuarioActual = FirebaseAuth.instance.currentUser;
   
   bool _esAdmin = false;
+  bool _esAutor = false;
   String _ordenSeleccionado = 'mas_reciente';
   String? _autorFiltro;
   Map<String, double> _promedios = {};
@@ -48,9 +49,11 @@ class _PaginaInicioState extends State<PaginaInicio> {
 
   Future<void> _verificarRol() async {
     final esAdmin = await _servicioFirestore.esAdmin();
+    final esAutor = await _servicioFirestore.esAutor();
     if (mounted) {
       setState(() {
         _esAdmin = esAdmin;
+        _esAutor = esAutor;
       });
     }
   }
@@ -245,7 +248,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
           },
         ),
       ),
-      floatingActionButton: _esAdmin
+      floatingActionButton: (_esAdmin || _esAutor)
           ? FloatingActionButton.extended(
               onPressed: () {
                 context.push(RutasAplicacion.crearCapsula);

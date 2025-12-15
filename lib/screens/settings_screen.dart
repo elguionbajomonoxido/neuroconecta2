@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../controllers/settings_controller.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import 'editar_groserias_screen.dart';
 import 'package:go_router/go_router.dart';
 import '../routes/app_routes.dart';
 
@@ -18,11 +20,24 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
   final ServicioAutenticacion _servicioAutenticacion = ServicioAutenticacion();
   final User? _usuarioActual = FirebaseAuth.instance.currentUser;
   final TextEditingController _controladorNombre = TextEditingController();
+  bool _esAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _controladorNombre.text = _usuarioActual?.displayName ?? '';
+    _verificarAdmin();
+  }
+
+  Future<void> _verificarAdmin() async {
+    try {
+      final servicio = ServicioFirestore();
+      final es = await servicio.esAdmin();
+      if (!mounted) return;
+      setState(() => _esAdmin = es);
+    } catch (_) {
+      // ignore
+    }
   }
 
   @override
@@ -369,6 +384,17 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
             value: configuracion.modoNinosActivado,
             onChanged: (val) => configuracion.establecerModoNinos(val),
             activeThumbColor: tema.colorScheme.primary,
+          ),
+
+          // Opción para administrar lista de groserías (solo admins)
+          if (_esAdmin) ListTile(
+            leading: const Icon(Icons.shield_moon_outlined),
+            title: const Text('Editar lista de groserías'),
+            subtitle: const Text('Solo disponible para administradores'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const EditarGroseriasScreen()));
+            },
           ),
 
           const Divider(height: 32),

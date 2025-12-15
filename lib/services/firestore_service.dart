@@ -30,6 +30,11 @@ class ServicioFirestore {
     return role == 'admin';
   }
 
+  Future<bool> esAutor() async {
+    final role = await obtenerRolUsuario();
+    return role == 'autor';
+  }
+
   // --- CÁPSULAS ---
   Stream<List<Capsula>> obtenerCapsulas() {
     
