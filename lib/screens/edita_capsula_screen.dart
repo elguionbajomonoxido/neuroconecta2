@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firestore_service.dart';
 
 class PantallaEditarCapsula extends StatefulWidget {
@@ -44,6 +45,19 @@ class _PantallaEditarCapsulaState extends State<PantallaEditarCapsula> {
     try {
       // Usamos first para obtener el valor actual del stream una sola vez
       final capsula = await _servicioFirestore.obtenerCapsula(widget.capsuleId).first;
+      // Verificar permisos: admin o autor propietario
+      final role = await _servicioFirestore.obtenerRolUsuario();
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final puedeEditar = role == 'admin' || (role == 'autor' && capsula.creadoPorUid == uid);
+      if (!puedeEditar) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No tienes permiso para editar esta cápsula'), backgroundColor: Colors.red),
+          );
+          context.pop();
+        }
+        return;
+      }
       
       _controladorTitulo.text = capsula.titulo;
       _controladorResumen.text = capsula.resumen;

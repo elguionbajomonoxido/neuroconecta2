@@ -94,7 +94,8 @@ class _PantallaDetalleCapsulaState extends State<PantallaDetalleCapsula> {
             actions: () {
               final List<Widget> acciones = [];
               // Edit solo para admin
-              if (_esAdmin) {
+              // Editar: admin o autor que sea propietario de la cápsula
+              if (_esAdmin || (_esAutor && capsula.creadoPorUid == _usuarioUid)) {
                 acciones.add(IconButton(
                   icon: const Icon(Icons.edit),
                   onPressed: () => context.push('${RutasAplicacion.editarCapsula}/${capsula.id}'),
@@ -204,7 +205,7 @@ class _PantallaDetalleCapsulaState extends State<PantallaDetalleCapsula> {
                 ),
                 const SizedBox(height: 16),
                 
-                FormularioRetroalimentacion(capsulaId: capsula.id),
+                FormularioRetroalimentacion(capsulaId: capsula.id, forceCompactIfExists: true),
                 
                 const SizedBox(height: 16),
                 

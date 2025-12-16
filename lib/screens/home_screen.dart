@@ -8,6 +8,7 @@ import '../services/firestore_service.dart';
 import '../services/feedback_service.dart';
 import '../widgets/capsula_card.dart';
 import '../controllers/settings_controller.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PaginaInicio extends StatefulWidget {
   const PaginaInicio({super.key});
@@ -23,19 +24,73 @@ class _PaginaInicioState extends State<PaginaInicio> {
   
   bool _esAdmin = false;
   bool _esAutor = false;
-  String _ordenSeleccionado = 'mas_reciente';
+  String _ordenSeleccionado = 'A_to_Z';
   String? _autorFiltro;
   Map<String, double> _promedios = {};
   bool _estaCargandoPromedios = false;
+  bool _promediosCargados = false;
+  static const String _prefsKeyOrden = 'home_orden_seleccion';
 
-  Future<void> _cargarPromedios() async {
+  Future<void> _guardarOrdenSeleccionado(String orden) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefsKeyOrden, orden);
+    } catch (_) {}
+  }
+
+  Future<void> _cargarOrdenGuardado() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final orden = prefs.getString(_prefsKeyOrden);
+      if (orden != null && mounted) {
+        setState(() => _ordenSeleccionado = orden);
+        if (orden == 'relevancia') await _cargarPromedios();
+      }
+    } catch (_) {}
+  }
+
+  // Carga promedios. Si la consulta global falla o devuelve vacío y se pasan ids,
+  // calcula estadísticas por capsula individualmente.
+  Future<void> _cargarPromedios([List<String>? capsulaIds]) async {
     if (_estaCargandoPromedios) return;
     setState(() => _estaCargandoPromedios = true);
     try {
       final proms = await _servicioRetro.obtenerPromediosPorCapsulas();
-      if (mounted) setState(() => _promedios = proms);
+      final Map<String, double> resultado = Map<String, double>.from(proms);
+
+      // "Detector": Asegurar que todas las cápsulas tengan un valor, aunque sea 0.0
+      if (capsulaIds != null) {
+        for (final id in capsulaIds) {
+          if (!resultado.containsKey(id)) {
+            // Si no está en el resultado global, intentamos obtenerlo individualmente
+            // o asignamos 0.0 si no existe para asegurar que el mapa tenga la entrada.
+            try {
+              // Solo consultamos individualmente si el mapa global estaba vacío (fallo potencial)
+              // O si queremos ser muy exhaustivos. Para eficiencia, si el global funcionó,
+              // asumimos que los que faltan son 0.
+              if (proms.isEmpty) {
+                 final stats = await _servicioRetro.obtenerEstadisticasCapsula(id);
+                 final avg = (stats['avg'] as num?)?.toDouble() ?? 0.0;
+                 resultado[id] = avg;
+              } else {
+                 resultado[id] = 0.0;
+              }
+            } catch (_) {
+              resultado[id] = 0.0;
+            }
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _promedios = resultado;
+          _promediosCargados = true;
+        });
+      }
     } catch (_) {
-      // Silencioso: si falla, dejamos el mapa vacío (0.0 por defecto al ordenar)
+      // Si falla todo, al menos marcamos como cargado para no buclear
+      if (mounted) setState(() => _promediosCargados = true);
     } finally {
       if (mounted) setState(() => _estaCargandoPromedios = false);
     }
@@ -45,6 +100,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
   void initState() {
     super.initState();
     _verificarRol();
+    _cargarOrdenGuardado();
   }
 
   Future<void> _verificarRol() async {
@@ -131,6 +187,13 @@ class _PaginaInicioState extends State<PaginaInicio> {
                 case 'Z_to_A':
                   lista.sort((a, b) => b.titulo.toLowerCase().compareTo(a.titulo.toLowerCase()));
                   break;
+                case 'relevancia':
+                  lista.sort((a, b) {
+                    final pa = _promedios[a.id] ?? 0.0;
+                    final pb = _promedios[b.id] ?? 0.0;
+                    return pb.compareTo(pa);
+                  });
+                  break;
                 case 'mas_reciente':
                   lista.sort((a, b) => b.createdAt.compareTo(a.createdAt));
                   break;
@@ -174,8 +237,9 @@ class _PaginaInicioState extends State<PaginaInicio> {
                           initialValue: _ordenSeleccionado,
                           onSelected: (val) async {
                             setState(() => _ordenSeleccionado = val);
+                            await _guardarOrdenSeleccionado(val);
                             if (val == 'relevancia') {
-                              if (_promedios.isEmpty) await _cargarPromedios();
+                              if (!_promediosCargados) await _cargarPromedios(listaPorAutor.map((c) => c.id).toList());
                             }
                           },
                           itemBuilder: (context) => [
@@ -227,20 +291,18 @@ class _PaginaInicioState extends State<PaginaInicio> {
                 // Expanded con contenido que depende del orden seleccionado
                 Expanded(
                   child: _ordenSeleccionado == 'relevancia'
-                      ? (_estaCargandoPromedios
-                          ? const Center(child: CircularProgressIndicator())
-                          : (_promedios.isEmpty
-                              ? Center(
-                                  child: ElevatedButton(
-                                    onPressed: _cargarPromedios,
-                                    child: const Text('Cargar relevancia'),
-                                  ),
-                                )
-                              : listaOrdenadaWidget(List<Capsula>.from(listaPorAutor)..sort((a, b) {
-                                  final pa = _promedios[a.id] ?? 0.0;
-                                  final pb = _promedios[b.id] ?? 0.0;
-                                  return pb.compareTo(pa);
-                                }))))
+                      ? FutureBuilder<void>(
+                          future: !_promediosCargados
+                              ? _cargarPromedios(listaPorAutor.map((c) => c.id).toList())
+                              : Future.value(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting || _estaCargandoPromedios) {
+                              return const Center(child: CircularProgressIndicator());
+                            }
+                            // Aseguramos que el mapa de promedios esté disponible (puede contener 0.0)
+                            return listaOrdenadaWidget(List<Capsula>.from(listaPorAutor));
+                          },
+                        )
                       : listaOrdenadaWidget(List<Capsula>.from(listaPorAutor)),
                 ),
               ],

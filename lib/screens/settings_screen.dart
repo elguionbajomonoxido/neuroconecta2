@@ -269,24 +269,77 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
       return;
     }
 
-    try {
+    Future<void> _doUpdate() async {
       await user.updateDisplayName(nuevoNombre);
       await FirebaseFirestore.instance.collection('usuarios').doc(user.uid).update({
         'nombre': nuevoNombre,
       });
+    }
 
+    try {
+      await _doUpdate();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Nombre actualizado correctamente')),
         );
         FocusScope.of(context).unfocus();
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al actualizar nombre: $e')),
-        );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        // Necesitamos reautenticar al usuario
+        final usesPassword = user.providerData.any((p) => p.providerId == 'password');
+        if (usesPassword && user.email != null) {
+          // Pedir contraseña actual para reautenticación
+          final passController = TextEditingController();
+          final reauth = await showDialog<bool?>(
+            context: context,
+            builder: (c) => AlertDialog(
+              title: const Text('Reautenticación requerida'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Por seguridad, vuelve a ingresar tu contraseña para actualizar el nombre.'),
+                  const SizedBox(height: 8),
+                  TextField(controller: passController, decoration: const InputDecoration(labelText: 'Contraseña'), obscureText: true),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancelar')),
+                ElevatedButton(onPressed: () => Navigator.pop(c, true), child: const Text('Reautenticar')),
+              ],
+            ),
+          );
+
+          if (reauth == true) {
+            try {
+              final cred = EmailAuthProvider.credential(email: user.email!, password: passController.text);
+              await user.reauthenticateWithCredential(cred);
+              // Reintentar actualización
+              await _doUpdate();
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nombre actualizado correctamente')));
+            } catch (reauthErr) {
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al reautenticar: $reauthErr')));
+            }
+          }
+        } else {
+          // No es posible reautenticar programáticamente (proveedor externo)
+          if (mounted) showDialog(
+            context: context,
+            builder: (c) => AlertDialog(
+              title: const Text('Reautenticación necesaria'),
+              content: const Text('Por seguridad, debes volver a iniciar sesión con tu proveedor (p. ej. Google) antes de cambiar el nombre.'),
+              actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('Entendido'))],
+            ),
+          );
+        }
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al actualizar nombre: ${e.message}')));
       }
+    } on FirebaseException catch (e) {
+      // Firestore u otros errores
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al actualizar nombre (Firestore): ${e.message}')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al actualizar nombre: $e')));
     }
   }
 

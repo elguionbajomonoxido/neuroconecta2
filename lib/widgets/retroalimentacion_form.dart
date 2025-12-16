@@ -8,8 +8,9 @@ import 'estrella_rating.dart';
 
 class FormularioRetroalimentacion extends StatefulWidget {
   final String capsulaId;
+  final bool forceCompactIfExists;
 
-  const FormularioRetroalimentacion({super.key, required this.capsulaId});
+  const FormularioRetroalimentacion({super.key, required this.capsulaId, this.forceCompactIfExists = false});
 
   @override
   State<FormularioRetroalimentacion> createState() => _FormularioRetroalimentacionState();
@@ -21,7 +22,9 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
   int _calificacion = 0;
   bool _estaEnviando = false;
   String? _feedbackId;
+  bool _editando = false;
   List<String> _listaGroserias = [];
+  bool _cargaCompletada = false;
 
   @override
   void dispose() {
@@ -53,9 +56,13 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
           _feedbackId = existente.id;
           _calificacion = existente.estrellas;
           _controladorComentario.text = existente.comentario;
+          // por defecto no abrir el editor: mostramos vista compacta
+          _editando = false;
         });
       });
     }
+    // Marca que la comprobación inicial ya se completó
+    if (mounted) setState(() => _cargaCompletada = true);
   }
 
   Future<void> _cargarListaGroserias() async {
@@ -126,6 +133,7 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
           'comentario': comentarioLimpio,
           'estrellas': _calificacion,
         });
+        if (mounted) setState(() => _editando = false);
       } else {
         final feedback = Retroalimentacion(
           id: '',
@@ -138,6 +146,12 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
         );
 
         await _servicioRetroalimentacion.agregarRetroalimentacion(feedback);
+        // asignar id determinístico localmente para reflejar existencia
+        final nuevoId = '${widget.capsulaId}_${user.uid}';
+        if (mounted) setState(() {
+          _feedbackId = nuevoId;
+          _editando = false;
+        });
       }
 
       if (mounted) {
@@ -161,6 +175,39 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
 
   @override
   Widget build(BuildContext context) {
+    // Si se solicitó forzar compact view y aún no hemos comprobado, mostrar indicador
+    if (widget.forceCompactIfExists && !_cargaCompletada) {
+      return const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator()));
+    }
+
+    // Si ya existe feedback y no estamos en modo edición, mostrar vista compacta con botón Editar
+    if (_feedbackId != null && !_editando) {
+      return Card(
+        margin: const EdgeInsets.symmetric(vertical: 16),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Tu opinión', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  ClasificacionEstrellas(calificacion: _calificacion, tamano: 20),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('$_calificacion estrella(s)', style: const TextStyle(fontWeight: FontWeight.w600))),
+                  TextButton(onPressed: () => setState(() => _editando = true), child: const Text('Editar')),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(_controladorComentario.text.trim(), style: const TextStyle(fontSize: 14)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Modo edición / nuevo comentario
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 16),
       child: Padding(
@@ -168,7 +215,7 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Deja tu opinión', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(_feedbackId == null ? 'Deja tu opinión' : 'Editar tu opinión', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             Center(
               child: ClasificacionEstrellas(
@@ -187,14 +234,20 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
               maxLines: 3,
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _estaEnviando ? null : _enviarRetroalimentacion,
-                child: _estaEnviando
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white))
-                    : const Text('Enviar Comentario'),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _estaEnviando ? null : _enviarRetroalimentacion,
+                    child: _estaEnviando
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white))
+                        : Text(_feedbackId == null ? 'Enviar Comentario' : 'Guardar Cambios'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (_feedbackId != null)
+                  OutlinedButton(onPressed: () => setState(() => _editando = false), child: const Text('Cancelar')),
+              ],
             ),
           ],
         ),

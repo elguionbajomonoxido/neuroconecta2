@@ -18,7 +18,11 @@ class ServicioRetroalimentacion {
 
   // Agregar retroalimentación
   Future<void> agregarRetroalimentacion(Retroalimentacion feedback) async {
-    await _db.collection('retroalimentaciones').add(feedback.aMapa());
+    final fbId = '${feedback.capsulaId}_${feedback.usuarioUid}';
+    final mapa = Map<String, dynamic>.from(feedback.aMapa());
+    // Use server timestamp for createdAt to avoid trusting client clock
+    mapa['createdAt'] = FieldValue.serverTimestamp();
+    await _db.collection('retroalimentaciones').doc(fbId).set(mapa);
   }
 
   // Obtener retroalimentación de un usuario para una capsula (si existe)
