@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/capsula.dart';
+import 'feedback_service.dart';
 
 // Servicio para interactuar con Firestore
 class ServicioFirestore {
@@ -55,6 +56,36 @@ class ServicioFirestore {
 
   // Crear cápsula
   Future<void> agregarCapsula(Capsula capsula) async {
+    // Validar que no contenga groserías (ningún usuario, ni admin)
+    try {
+      final servicioRetro = ServicioRetroalimentacion();
+      var malas = await servicioRetro.obtenerListaGroseriasFirestore();
+      if (malas.isEmpty) {
+        malas = ['puta', 'mierda', 'gilipollas', 'idiota', 'imbecil', 'cabron', 'pendejo'];
+      }
+      final texto = '${capsula.titulo} ${capsula.resumen} ${capsula.contenidoLargo}';
+      for (final m in malas) {
+        final p = m.toLowerCase().trim();
+        if (p.isEmpty) continue;
+        final regex = RegExp(r'(^|\W)'+RegExp.escape(p)+r'($|\W)', caseSensitive: false);
+        if (regex.hasMatch(texto.toLowerCase())) {
+          throw Exception('El contenido contiene palabras censuradas');
+        }
+      }
+    } catch (_) {
+      // Si falla la validación remota, usamos lista por defecto y seguimos validando
+      final malas = ['puta', 'mierda', 'gilipollas', 'idiota', 'imbecil', 'cabron', 'pendejo'];
+      final texto = '${capsula.titulo} ${capsula.resumen} ${capsula.contenidoLargo}';
+      for (final m in malas) {
+        final p = m.toLowerCase().trim();
+        if (p.isEmpty) continue;
+        final regex = RegExp(r'(^|\W)'+RegExp.escape(p)+r'($|\W)', caseSensitive: false);
+        if (regex.hasMatch(texto.toLowerCase())) {
+          throw Exception('El contenido contiene palabras censuradas');
+        }
+      }
+    }
+
     // Al crear, usar serverTimestamp para createdAt y evitar confiar en el reloj del cliente
     final mapa = Map<String, dynamic>.from(capsula.aMapa());
     mapa['createdAt'] = FieldValue.serverTimestamp();
@@ -63,6 +94,23 @@ class ServicioFirestore {
 
   // Actualizar cápsula
   Future<void> actualizarCapsula(String id, Map<String, dynamic> data) async {
+    // Validar que no contenga groserías en los campos principales
+    try {
+      final servicioRetro = ServicioRetroalimentacion();
+      final malas = await servicioRetro.obtenerListaGroseriasFirestore();
+      final texto = '${data['titulo'] ?? ''} ${data['resumen'] ?? ''} ${data['contenidoLargo'] ?? ''}';
+      for (final m in malas) {
+        final p = m.toLowerCase().trim();
+        if (p.isEmpty) continue;
+        final regex = RegExp(r'(^|\W)'+RegExp.escape(p)+r'($|\W)', caseSensitive: false);
+        if (regex.hasMatch(texto.toLowerCase())) {
+          throw Exception('El contenido contiene palabras censuradas');
+        }
+      }
+    } catch (_) {
+      // Si falla la validación remota, permitimos continuar
+    }
+
     await _db.collection('capsulas').doc(id).update({
       ...data,
       'updatedAt': FieldValue.serverTimestamp(),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/firestore_service.dart';
 
 class PantallaEditarCapsula extends StatefulWidget {
@@ -28,6 +29,8 @@ class _PantallaEditarCapsulaState extends State<PantallaEditarCapsula> {
   bool _esBorrador = false;
   bool _estaCargando = false;
   bool _cargandoDatos = true;
+  // Lista de groserías cargada desde Firestore
+  List<String> _listaGroserias = [];
 
   @override
   void initState() {
@@ -38,7 +41,34 @@ class _PantallaEditarCapsulaState extends State<PantallaEditarCapsula> {
     _controladorCategoria = TextEditingController();
     _controladorMediaUrl = TextEditingController();
     _controladorAutor = TextEditingController();
+    _cargarGroserias();
     _cargarCapsula();
+  }
+
+  Future<void> _cargarGroserias() async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('config').doc('groserias').get();
+      final data = doc.data();
+      if (data != null && data['palabras'] is List) {
+        _listaGroserias = List<String>.from(data['palabras'].map((e) => e.toString()));
+      } else {
+        _listaGroserias = [];
+      }
+    } catch (_) {
+      _listaGroserias = [];
+    }
+  }
+
+  bool _contieneGroseria(String texto) {
+    if (_listaGroserias.isEmpty) return false;
+    final s = texto.toLowerCase();
+    for (final palabra in _listaGroserias) {
+      final p = palabra.toLowerCase().trim();
+      if (p.isEmpty) continue;
+      final regex = RegExp(r'(^|\\W)'+RegExp.escape(p)+r'($|\\W)', caseSensitive: false);
+      if (regex.hasMatch(s)) return true;
+    }
+    return false;
   }
 
   Future<void> _cargarCapsula() async {
@@ -94,6 +124,20 @@ class _PantallaEditarCapsulaState extends State<PantallaEditarCapsula> {
 
   Future<void> _actualizarCapsula() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Validar contenido frente a lista de groserías antes de enviar
+    final titulo = _controladorTitulo.text.trim();
+    final resumen = _controladorResumen.text.trim();
+    final contenido = _controladorContenido.text.trim();
+
+    if (_contieneGroseria(titulo) || _contieneGroseria(resumen) || _contieneGroseria(contenido)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('El contenido contiene palabras censuradas'), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
 
     setState(() => _estaCargando = true);
 

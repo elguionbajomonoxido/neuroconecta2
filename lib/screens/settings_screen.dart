@@ -144,6 +144,19 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
                           const SnackBar(content: Text('Contraseña actualizada correctamente')),
                         );
                       }
+                    } on FirebaseAuthException catch (e) {
+                      if (mounted) {
+                        Navigator.pop(context); // Cerrar loading
+                        if (e.code == 'wrong-password') {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Contraseña incorrecta, inténtalo de nuevo.'), backgroundColor: Colors.red),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.message ?? 'Error al cambiar contraseña'), backgroundColor: Colors.red),
+                          );
+                        }
+                      }
                     } catch (e) {
                       if (mounted) {
                         Navigator.pop(context); // Cerrar loading
@@ -238,6 +251,19 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
                           ),
                         );
                       }
+                    } on FirebaseAuthException catch (e) {
+                      if (mounted) {
+                        Navigator.pop(context); // Cerrar loading
+                        if (e.code == 'wrong-password') {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Contraseña incorrecta, inténtalo de nuevo.'), backgroundColor: Colors.red),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.message ?? 'Error al cambiar correo'), backgroundColor: Colors.red),
+                          );
+                        }
+                      }
                     } catch (e) {
                       if (mounted) {
                         Navigator.pop(context); // Cerrar loading
@@ -317,6 +343,18 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
               // Reintentar actualización
               await _doUpdate();
               if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nombre actualizado correctamente')));
+            } on FirebaseAuthException catch (reauthErr) {
+              if (mounted) {
+                if (reauthErr.code == 'wrong-password') {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Contraseña incorrecta, inténtalo de nuevo.'), backgroundColor: Colors.red),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error al reautenticar: ${reauthErr.message}'), backgroundColor: Colors.red),
+                  );
+                }
+              }
             } catch (reauthErr) {
               if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al reautenticar: $reauthErr')));
             }

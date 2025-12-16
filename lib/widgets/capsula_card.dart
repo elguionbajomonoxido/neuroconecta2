@@ -68,10 +68,10 @@ class TarjetaCapsula extends StatelessWidget {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            _buildTag(context, capsula.categoria, Colors.purple.shade50, Colors.purple),
+                            _buildTagTheme(context, capsula.categoria, primary: true),
                             const SizedBox(width: 8),
                             if (capsula.esBorrador)
-                              _buildTag(context, 'Borrador', Colors.grey.shade200, Colors.grey.shade700),
+                              _buildTagTheme(context, 'Borrador', primary: false),
                           ],
                         ),
                       ],
@@ -95,7 +95,10 @@ class TarjetaCapsula extends StatelessWidget {
     );
   }
 
-  Widget _buildTag(BuildContext context, String text, Color bg, Color fg) {
+  Widget _buildTagTheme(BuildContext context, String text, {bool primary = true}) {
+    final cs = Theme.of(context).colorScheme;
+    final bg = primary ? cs.primaryContainer : cs.surfaceVariant;
+    final fg = primary ? cs.onPrimaryContainer : cs.onSurface;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(

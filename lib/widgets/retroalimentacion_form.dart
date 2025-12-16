@@ -105,6 +105,20 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
     return limpio;
   }
 
+  bool _contieneGroseria(String texto) {
+    final malas = _listaGroserias.isNotEmpty
+        ? _listaGroserias
+        : ['puta', 'mierda', 'gilipollas', 'idiota', 'imbecil', 'cabron', 'pendejo'];
+    final s = texto.toLowerCase();
+    for (final m in malas) {
+      final p = m.toLowerCase().trim();
+      if (p.isEmpty) continue;
+      final regex = RegExp(r'(^|\W)'+RegExp.escape(p)+r'($|\W)', caseSensitive: false);
+      if (regex.hasMatch(s)) return true;
+    }
+    return false;
+  }
+
   Future<void> _enviarRetroalimentacion() async {
     if (_calificacion == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -125,7 +139,14 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('Usuario no autenticado');
 
-      final comentarioLimpio = _sanitizarComentario(_controladorComentario.text.trim());
+      final rawComentario = _controladorComentario.text.trim();
+      // Denegar si contiene groserías (no se permite ni a admins)
+      if (_contieneGroseria(rawComentario)) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El comentario contiene palabras censuradas'), backgroundColor: Colors.red));
+        return;
+      }
+
+      final comentarioLimpio = _sanitizarComentario(rawComentario);
 
       if (_feedbackId != null) {
         // Actualizar existente

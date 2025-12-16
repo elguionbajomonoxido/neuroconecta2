@@ -132,17 +132,27 @@ class _PantallaDetalleCapsulaState extends State<PantallaDetalleCapsula> {
                       child: Row(
                         children: [
                           Flexible(
-                            child: Chip(
-                              label: Text(capsula.categoria),
-                              backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            child: Builder(
+                              builder: (ctx) {
+                                final cs = Theme.of(ctx).colorScheme;
+                                return Chip(
+                                  label: Text(capsula.categoria, style: TextStyle(color: cs.onPrimaryContainer)),
+                                  backgroundColor: cs.primaryContainer,
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(width: 8),
                           Flexible(
-                            child: Chip(
-                              label: Text(capsula.segmento.toUpperCase()),
-                              backgroundColor: Colors.grey.shade200,
-                            ),
+                              child: Builder(
+                                builder: (ctx) {
+                                  final cs = Theme.of(ctx).colorScheme;
+                                  return Chip(
+                                    label: Text(capsula.segmento.toUpperCase(), style: TextStyle(color: cs.onSurface)),
+                                    backgroundColor: cs.surfaceVariant,
+                                  );
+                                },
+                              ),
                           ),
                         ],
                       ),

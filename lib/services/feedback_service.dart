@@ -18,8 +18,18 @@ class ServicioRetroalimentacion {
 
   // Agregar retroalimentación
   Future<void> agregarRetroalimentacion(Retroalimentacion feedback) async {
-    final fbId = '${feedback.capsulaId}_${feedback.usuarioUid}';
+    // validar contenido para evitar groserías (bloqueo server-side en cliente)
     final mapa = Map<String, dynamic>.from(feedback.aMapa());
+    final comentario = (mapa['comentario'] as String?) ?? '';
+    var malas = await obtenerListaGroseriasFirestore();
+    if (malas.isEmpty) {
+      malas = ['puta', 'mierda', 'gilipollas', 'idiota', 'imbecil', 'cabron', 'pendejo'];
+    }
+    if (_contieneGroseriaEnTexto(comentario, malas)) {
+      throw Exception('El comentario contiene palabras censuradas');
+    }
+
+    final fbId = '${feedback.capsulaId}_${feedback.usuarioUid}';
     // Use server timestamp for createdAt to avoid trusting client clock
     mapa['createdAt'] = FieldValue.serverTimestamp();
     await _db.collection('retroalimentaciones').doc(fbId).set(mapa);
@@ -39,6 +49,16 @@ class ServicioRetroalimentacion {
 
   // Actualizar retroalimentación
   Future<void> actualizarRetroalimentacion(String id, Map<String, dynamic> data) async {
+    // validar texto
+    final comentario = (data['comentario'] as String?) ?? '';
+    var malas = await obtenerListaGroseriasFirestore();
+    if (malas.isEmpty) {
+      malas = ['puta', 'mierda', 'gilipollas', 'idiota', 'imbecil', 'cabron', 'pendejo'];
+    }
+    if (_contieneGroseriaEnTexto(comentario, malas)) {
+      throw Exception('El comentario contiene palabras censuradas');
+    }
+
     await _db.collection('retroalimentaciones').doc(id).update({
       ...data,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -110,5 +130,17 @@ class ServicioRetroalimentacion {
     final suma = estrellas.fold<int>(0, (a, b) => a + b);
     final avg = suma / estrellas.length;
     return {'avg': avg, 'count': estrellas.length};
+  }
+
+  bool _contieneGroseriaEnTexto(String texto, List<String> malas) {
+    if (malas.isEmpty || texto.trim().isEmpty) return false;
+    final lower = texto.toLowerCase();
+    for (final m in malas) {
+      final p = m.toLowerCase().trim();
+      if (p.isEmpty) continue;
+      final regex = RegExp(r'(^|\W)'+RegExp.escape(p)+r'($|\W)', caseSensitive: false);
+      if (regex.hasMatch(lower)) return true;
+    }
+    return false;
   }
 }

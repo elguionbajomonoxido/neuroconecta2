@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/capsula.dart';
 import '../services/firestore_service.dart';
+import '../services/feedback_service.dart';
 
 class PantallaCrearCapsula extends StatefulWidget {
   const PantallaCrearCapsula({super.key});
@@ -26,6 +27,8 @@ class _PantallaCrearCapsulaState extends State<PantallaCrearCapsula> {
   String _segmento = 'adultos'; // Valor por defecto
   bool _esBorrador = false;
   bool _estaCargando = false;
+  // Lista de groserías
+  List<String> _listaGroserias = [];
 
   @override
   void dispose() {
@@ -45,10 +48,45 @@ class _PantallaCrearCapsulaState extends State<PantallaCrearCapsula> {
     if (user != null && user.displayName != null) {
       _autorControlador.text = user.displayName!;
     }
+    _cargarGroserias();
+  }
+
+  Future<void> _cargarGroserias() async {
+    try {
+      final servicio = ServicioRetroalimentacion();
+      final desdeFs = await servicio.obtenerListaGroseriasFirestore();
+      if (desdeFs.isNotEmpty) {
+        _listaGroserias = desdeFs;
+        return;
+      }
+    } catch (_) {}
+    // fallback básico
+    _listaGroserias = ['puta', 'mierda', 'gilipollas', 'idiota', 'imbecil', 'cabron', 'pendejo'];
+  }
+
+  bool _contieneGroseria(String texto) {
+    if (_listaGroserias.isEmpty) return false;
+    final s = texto.toLowerCase();
+    for (final m in _listaGroserias) {
+      final p = m.toLowerCase().trim();
+      if (p.isEmpty) continue;
+      final regex = RegExp(r'(^|\W)'+RegExp.escape(p)+r'($|\W)', caseSensitive: false);
+      if (regex.hasMatch(s)) return true;
+    }
+    return false;
   }
 
   Future<void> _guardarCapsula() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Validar groserías
+    final titulo = _tituloControlador.text.trim();
+    final resumen = _resumenControlador.text.trim();
+    final contenido = _contenidoControlador.text.trim();
+    if (_contieneGroseria(titulo) || _contieneGroseria(resumen) || _contieneGroseria(contenido)) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El contenido contiene palabras censuradas'), backgroundColor: Colors.red));
+      return;
+    }
 
     setState(() => _estaCargando = true);
 
