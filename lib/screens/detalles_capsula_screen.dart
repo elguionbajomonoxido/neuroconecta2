@@ -199,12 +199,21 @@ class _PantallaDetalleCapsulaState extends State<PantallaDetalleCapsula> {
                 const SizedBox(height: 16),
 
                 // Contenido Markdown
-                MarkdownBody(
-                  data: capsula.contenidoLargo,
-                  styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                    p: Theme.of(context).textTheme.bodyLarge,
-                    h1: Theme.of(context).textTheme.displaySmall,
-                    h2: Theme.of(context).textTheme.titleLarge,
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: MarkdownBody(
+                    data: capsula.contenidoLargo,
+                    styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                      p: Theme.of(context).textTheme.bodyLarge,
+                      h1: Theme.of(context).textTheme.displaySmall,
+                      h2: Theme.of(context).textTheme.titleLarge,
+                    ),
                   ),
                 ),
                 

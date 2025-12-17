@@ -173,9 +173,18 @@ class _DetallesGuiaScreenState extends State<DetallesGuiaScreen> {
   List<Widget> _renderBloques(BuildContext context, Guia guia) {
     if (guia.bloques.isEmpty) {
       return [
-        CustomMarkdownBody(
-          data: guia.contenidoMarkdown,
-          selectable: true,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: CustomMarkdownBody(
+            data: guia.contenidoMarkdown,
+            selectable: true,
+          ),
         ),
       ];
     }
@@ -184,12 +193,30 @@ class _DetallesGuiaScreenState extends State<DetallesGuiaScreen> {
         .map(
           (b) => Padding(
             padding: const EdgeInsets.only(bottom: 24),
-            child: b.tipo == 'texto'
-                ? CustomMarkdownBody(data: b.texto ?? '', selectable: true)
-                : _renderImagen(b),
+            child: b.tipo == 'imagen'
+                ? _renderImagen(b)
+                : _renderTexto(b),
           ),
         )
         .toList();
+  }
+
+  Widget _renderTexto(BloqueGuia bloque) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: bloque.tipo == 'texto'
+          ? CustomMarkdownBody(data: bloque.texto ?? '', selectable: true)
+          : Text(
+              bloque.texto ?? '',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+    );
   }
 
   Widget _renderImagen(BloqueGuia bloque) {

@@ -29,7 +29,7 @@ class ImagenGuia {
 }
 
 class BloqueGuia {
-  final String tipo; // 'texto' | 'imagen'
+  final String tipo; // 'texto' | 'texto_plano' | 'imagen'
   final String? texto;
   final String? url;
   final String? nombre;

@@ -310,11 +310,19 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
                       children: [
                         ListTile(
                           leading: const Icon(Icons.text_fields),
-                          title: const Text('Agregar texto'),
+                          title: const Text('Agregar texto (Markdown)'),
                           onTap: () {
                             Navigator.pop(sheetContext);
                             // Ejecutar la acción después de cerrar el sheet
                             Future.microtask(() => _agregarTexto());
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.description),
+                          title: const Text('Agregar texto plano'),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            Future.microtask(() => _agregarTextoPlano());
                           },
                         ),
                         ListTile(
@@ -371,7 +379,12 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
                 ElevatedButton.icon(
                   onPressed: _agregarTexto,
                   icon: const Icon(Icons.text_fields),
-                  label: const Text('Agregar texto'),
+                  label: const Text('Texto (Markdown)'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _agregarTextoPlano,
+                  icon: const Icon(Icons.description),
+                  label: const Text('Texto plano'),
                 ),
                 ElevatedButton.icon(
                   onPressed: _agregarImagen,
@@ -414,9 +427,40 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
                         children: [
                           Text(
                             bloque.tipo == 'texto'
-                                ? 'Bloque de texto'
-                                : 'Bloque de imagen',
+                                ? 'Bloque de texto (Markdown)'
+                                : bloque.tipo == 'texto_plano'
+                                    ? 'Bloque de texto plano'
+                                    : 'Bloque de imagen',
                             style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          PopupMenuButton<String>(
+                            onSelected: (String tipo) {
+                              if (bloque.tipo != 'imagen') {
+                                setState(() {
+                                  final b = _bloques[index];
+                                  _bloques[index] = BloqueGuia(
+                                    tipo: tipo,
+                                    texto: b.texto,
+                                    orden: b.orden,
+                                  );
+                                });
+                              }
+                            },
+                            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                              const PopupMenuItem<String>(
+                                value: 'texto',
+                                child: Text('Texto con Markdown'),
+                              ),
+                              const PopupMenuItem<String>(
+                                value: 'texto_plano',
+                                child: Text('Texto plano (sin Markdown)'),
+                              ),
+                            ],
+                            child: IconButton(
+                              onPressed: null,
+                              icon: const Icon(Icons.swap_horiz),
+                              tooltip: 'Cambiar tipo de texto',
+                            ),
                           ),
                           IconButton(
                             onPressed: () => _eliminarBloque(index),
@@ -425,14 +469,19 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
                         ],
                       ),
                       const SizedBox(height: 8),
-                      if (bloque.tipo == 'texto')
+                      if (bloque.tipo == 'texto' || bloque.tipo == 'texto_plano')
                         TextFormField(
                           key: ValueKey('texto_${index}_${bloque.orden}'),
                           initialValue: bloque.texto ?? '',
                           maxLines: null,
-                          decoration: const InputDecoration(
-                            labelText: 'Contenido (markdown)',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: bloque.tipo == 'texto'
+                                ? 'Contenido (Markdown - soporta **negrita**, *cursiva*, # títulos, etc.)'
+                                : 'Contenido (Texto plano - no interpreta Markdown)',
+                            border: const OutlineInputBorder(),
+                            helperText: bloque.tipo == 'texto'
+                                ? 'Ej: # Título\n**Negrita** y *cursiva*'
+                                : 'Ej: Este es texto plano sin interpretación',
                           ),
                           onChanged: (v) => _actualizarTexto(index, v),
                         )
@@ -547,6 +596,18 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
       _bloques.add(
         BloqueGuia(
           tipo: 'texto',
+          texto: '',
+          orden: _bloques.length,
+        ),
+      );
+    });
+  }
+
+  void _agregarTextoPlano() {
+    setState(() {
+      _bloques.add(
+        BloqueGuia(
+          tipo: 'texto_plano',
           texto: '',
           orden: _bloques.length,
         ),
