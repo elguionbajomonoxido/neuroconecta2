@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:neuroconecta2/models/guia.dart';
 import 'package:neuroconecta2/services/guias_firestore_service.dart';
 import 'package:neuroconecta2/services/guias_storage_service.dart';
 import 'package:neuroconecta2/widgets/custom_markdown_body.dart';
+import 'package:neuroconecta2/widgets/adaptive_image.dart';
 
 class EditarGuiaScreen extends StatefulWidget {
   final Guia? guia;
@@ -415,14 +415,12 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (bloque.url != null && bloque.url!.isNotEmpty)
-                              ClipRRect(
+                              AdaptiveImage(
+                                imageUrl: bloque.url!,
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
                                 borderRadius: BorderRadius.circular(8),
-                                child: CachedNetworkImage(
-                                  imageUrl: bloque.url!,
-                                  height: 180,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
                               )
                             else
                               Container(
@@ -480,7 +478,7 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
       }
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: CachedNetworkImage(
+        child: AdaptiveImage(
           imageUrl: bloque.url!,
           fit: BoxFit.cover,
         ),
