@@ -14,6 +14,7 @@ import '../screens/guia_funcionalidades_screen.dart';
 import '../screens/guia_autores_screen.dart';
 import '../screens/panel_admin_guias_screen.dart';
 import '../screens/editar_guia_screen.dart';
+import '../screens/detalles_guia_screen.dart';
 
 class RutasAplicacion {
   static const String inicioSesion = '/inicio-sesion';
@@ -28,6 +29,8 @@ class RutasAplicacion {
   static const String guiaAutores = '/configuracion/guias-autores';
   static const String panelAdminGuias = '/configuracion/panel-admin-guias';
   static const String editarGuia = '/configuracion/editar-guia';
+  static const String detallesGuia = '/detalles-guia';
+  static const String editarGuiaDetalle = '/editar-guia';
 
   // Flag para permitir navegación al login durante el cierre de sesión
   static bool isLoggingOut = false;
@@ -81,6 +84,20 @@ class RutasAplicacion {
             return const PanelAdminGuiasScreen();
           }
           return const EditarGuiaScreen();
+        },
+      ),
+      GoRoute(
+        path: '$detallesGuia/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return DetallesGuiaScreen(guiaId: id);
+        },
+      ),
+      GoRoute(
+        path: '$editarGuiaDetalle/:id',
+        builder: (context, state) {
+          // TODO: Implementar edición de guía desde detalles
+          return EditarGuiaScreen(guia: null);
         },
       ),
       GoRoute(

@@ -5,7 +5,7 @@ import 'package:neuroconecta2/models/guia.dart';
 import 'package:neuroconecta2/services/guias_firestore_service.dart';
 import 'package:neuroconecta2/services/firestore_service.dart' as fs;
 import 'package:neuroconecta2/widgets/custom_markdown_body.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:neuroconecta2/widgets/adaptive_image.dart';
 
 class GuiaAutoresScreen extends StatelessWidget {
   // ID de la guía principal que sirve como ejemplo
@@ -253,17 +253,10 @@ class GuiaAutoresScreen extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-      child: CachedNetworkImage(
+      child: AdaptiveImage(
         imageUrl: b.url!,
         fit: BoxFit.cover,
-        placeholder: (context, url) => Container(
-          color: Colors.grey[300],
-          child: const Center(child: CircularProgressIndicator()),
-        ),
-        errorWidget: (context, url, error) => Container(
-          color: Colors.grey[300],
-          child: const Icon(Icons.error),
-        ),
+        height: 200,
       ),
     );
   }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:neuroconecta2/models/guia.dart';
 import 'package:neuroconecta2/services/guias_firestore_service.dart';
-import 'package:neuroconecta2/widgets/custom_markdown_body.dart';
+import 'package:neuroconecta2/widgets/adaptive_image.dart';
+import 'package:go_router/go_router.dart';
 
 class GuiaFuncionalidadesScreen extends StatelessWidget {
   const GuiaFuncionalidadesScreen({super.key});
@@ -67,74 +67,58 @@ class GuiaFuncionalidadesScreen extends StatelessWidget {
   Widget _construirTarjetaGuia(BuildContext context, Guia guia) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      child: ExpansionTile(
-        title: Text(guia.titulo),
-        subtitle: Text(
-          'Actualizado: ${guia.updatedAt?.toString().split('.')[0] ?? guia.createdAt.toString().split('.')[0]}',
-          style: Theme.of(context).textTheme.labelSmall,
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ..._renderBloques(context, guia),
-              ],
+      child: InkWell(
+        onTap: () => context.push('/detalles-guia/${guia.id}'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(guia.titulo, style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Actualizado: ${guia.updatedAt?.toString().split('.')[0] ?? guia.createdAt.toString().split('.')[0]}',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _renderBloques(BuildContext context, Guia guia) {
-    if (guia.bloques.isEmpty) {
-      return [
-        CustomMarkdownBody(
-          data: guia.contenidoMarkdown,
-          selectable: true,
-        ),
-      ];
-    }
-
-    return guia.bloques
-        .map(
-          (b) => Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: b.tipo == 'texto'
-                ? CustomMarkdownBody(data: b.texto ?? '', selectable: true)
-                : _imagenWidget(b),
-          ),
-        )
-        .toList();
-  }
-
-  Widget _imagenWidget(BloqueGuia b) {
-    if (b.url == null || b.url!.isEmpty) {
-      return Container(
-        height: 180,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Center(child: Text('Imagen no disponible')),
-      );
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: CachedNetworkImage(
-        imageUrl: b.url!,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => Container(
-          color: Colors.grey[300],
-          child: const Center(child: CircularProgressIndicator()),
-        ),
-        errorWidget: (context, url, error) => Container(
-          color: Colors.grey[300],
-          child: const Icon(Icons.error),
+            if (guia.bloques.isNotEmpty)
+              SizedBox(
+                height: 200,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: guia.bloques.take(3).map((bloque) {
+                    if (bloque.tipo == 'imagen' && bloque.url != null && bloque.url!.isNotEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: AdaptiveImage(
+                            imageUrl: bloque.url!,
+                            fit: BoxFit.cover,
+                            width: 160,
+                            height: 200,
+                          ),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }).toList(),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton(
+                onPressed: () => context.push('/detalles-guia/${guia.id}'),
+                child: const Text('Ver detalles'),
+              ),
+            ),
+          ],
         ),
       ),
     );
