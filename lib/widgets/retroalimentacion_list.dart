@@ -66,7 +66,7 @@ class _ListaRetroalimentacionState extends State<ListaRetroalimentacion> {
         : ['puta', 'mierda', 'gilipollas'];
     var limpio = texto;
     for (final m in malas) {
-      final regex = RegExp('\\b' + RegExp.escape(m) + '\\b', caseSensitive: false);
+      final regex = RegExp('\\b${RegExp.escape(m)}\\b', caseSensitive: false);
       limpio = limpio.replaceAll(regex, '*' * m.length);
     }
     return limpio;
@@ -108,7 +108,7 @@ class _ListaRetroalimentacionState extends State<ListaRetroalimentacion> {
             return ListTile(
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(
-                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                 child: Text(
                   item.nombreUsuario.isNotEmpty ? item.nombreUsuario[0].toUpperCase() : '?',
                   style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),

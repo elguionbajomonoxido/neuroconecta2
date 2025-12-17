@@ -63,7 +63,7 @@ class ControladorConfiguracion extends ChangeNotifier {
   }
   // Establece la escala de texto
   Future<void> establecerFactorEscalaTexto(double scale) async {
-    _textScaleFactor = scale.clamp(0.8, 1.5);
+    _textScaleFactor = scale.clamp(0.8, 1.25);
     await _prefs.setDouble(_textScaleFactorKey, _textScaleFactor);
     notifyListeners();
   }

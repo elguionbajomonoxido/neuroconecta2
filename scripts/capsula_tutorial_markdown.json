@@ -1,0 +1,15 @@
+{
+  "id": "tutorial-markdown-autores",
+  "titulo": "Guía de Markdown para Autores",
+  "resumen": "Tutorial interactivo sobre cómo escribir en Markdown",
+  "descripcionCorta": "Aprende a usar Markdown en NeuroConecta",
+  "contenidoLargo": "# Guía Completa de Markdown\n\n## ¿Qué es Markdown?\n\nMarkdown es un lenguaje de formato simple que te permite crear texto con estilos sin complicaciones. Es perfecto para escribir contenido en NeuroConecta.\n\n## Texto Básico\n\n### Párrafos\nSimplemente escribe normalmente. Los párrafos se separan con una línea en blanco:\n\nEste es el primer párrafo.\n\nEste es el segundo párrafo.\n\n### Énfasis de Texto\n\n- **Negrita**: Usa `**texto**` o `__texto__`\n- *Itálica*: Usa `*texto*` o `_texto_`\n- ***Negrita e Itálica***: Usa `***texto***`\n\n## Títulos\n\nUsa `#` para crear títulos:\n\n```\n# Título nivel 1\n## Título nivel 2\n### Título nivel 3\n#### Título nivel 4\n```\n\n## Listas\n\n### Listas sin orden\n```\n- Elemento 1\n- Elemento 2\n- Elemento 3\n```\n\n### Listas ordenadas\n```\n1. Primer elemento\n2. Segundo elemento\n3. Tercer elemento\n```\n\n## Enlaces e Imágenes\n\n### Enlaces\n`[Texto del enlace](https://ejemplo.com)`\n\n### Imágenes\nLas imágenes en NeuroConecta se manejan a través de la galería visual.\n\n## Código\n\n### Código en línea\nUsa backticks: `código aquí`\n\n### Bloques de código\n```\n```\nTu código aquí\n```\n```\n\n## Tablas\n\n```\n| Encabezado 1 | Encabezado 2 |\n|---|---|\n| Celda 1 | Celda 2 |\n| Celda 3 | Celda 4 |\n```\n\n## Citas\n\nUsa `>` para crear citas:\n```\n> Esta es una cita\n> Que puede ocupar múltiples líneas\n```\n\n## Líneas Separadoras\n\nUsa `---`, `***` o `___` para crear una línea separadora.\n\n---\n\n## Consejos para Autores\n\n1. **Claridad**: Usa lenguaje simple y directo\n2. **Estructura**: Organiza con títulos y subtítulos\n3. **Énfasis**: Usa negrita/itálica para destacar conceptos importantes\n4. **Ejemplos**: Incluye código y ejemplos cuando sea posible\n5. **Accesibilidad**: Evita bloques de texto muy largos\n\nRecuerda: Esta guía está siempre disponible mientras editas contenido.",
+  "tipoCapsula": "guia",
+  "categoria": "tutoriales",
+  "creadoPor": "system",
+  "imagenPrincipal": "",
+  "nivel": "basico",
+  "duracionMinutos": 10,
+  "etiquetas": ["markdown", "tutorial", "autores"],
+  "activo": true
+}

@@ -99,7 +99,7 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
         : ['puta', 'mierda', 'gilipollas', 'idiota', 'imbecil', 'cabron', 'pendejo'];
     var limpio = texto;
     for (final m in malas) {
-      final regex = RegExp('\\b' + RegExp.escape(m) + '\\b', caseSensitive: false);
+      final regex = RegExp('\\b${RegExp.escape(m)}\\b', caseSensitive: false);
       limpio = limpio.replaceAll(regex, '*' * m.length);
     }
     return limpio;
@@ -169,10 +169,12 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
         await _servicioRetroalimentacion.agregarRetroalimentacion(feedback);
         // asignar id determinístico localmente para reflejar existencia
         final nuevoId = '${widget.capsulaId}_${user.uid}';
-        if (mounted) setState(() {
+        if (mounted) {
+          setState(() {
           _feedbackId = nuevoId;
           _editando = false;
         });
+        }
       }
 
       if (mounted) {

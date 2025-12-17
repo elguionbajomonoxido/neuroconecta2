@@ -6,6 +6,9 @@ import '../controllers/settings_controller.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import 'editar_groserias_screen.dart';
+import 'guia_funcionalidades_screen.dart';
+import 'guia_autores_screen.dart';
+import 'panel_admin_guias_screen.dart';
 import 'package:go_router/go_router.dart';
 import '../routes/app_routes.dart';
 
@@ -295,7 +298,7 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
       return;
     }
 
-    Future<void> _doUpdate() async {
+    Future<void> doUpdate() async {
       await user.updateDisplayName(nuevoNombre);
       await FirebaseFirestore.instance.collection('usuarios').doc(user.uid).update({
         'nombre': nuevoNombre,
@@ -303,7 +306,7 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
     }
 
     try {
-      await _doUpdate();
+      await doUpdate();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Nombre actualizado correctamente')),
@@ -341,7 +344,7 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
               final cred = EmailAuthProvider.credential(email: user.email!, password: passController.text);
               await user.reauthenticateWithCredential(cred);
               // Reintentar actualización
-              await _doUpdate();
+              await doUpdate();
               if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nombre actualizado correctamente')));
             } on FirebaseAuthException catch (reauthErr) {
               if (mounted) {
@@ -361,7 +364,8 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
           }
         } else {
           // No es posible reautenticar programáticamente (proveedor externo)
-          if (mounted) showDialog(
+          if (mounted) {
+            showDialog(
             context: context,
             builder: (c) => AlertDialog(
               title: const Text('Reautenticación necesaria'),
@@ -369,6 +373,7 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
               actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('Entendido'))],
             ),
           );
+          }
         }
       } else {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al actualizar nombre: ${e.message}')));
@@ -485,6 +490,46 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const EditarGroseriasScreen()));
+            },
+          ),
+
+          const Divider(height: 32),
+
+          // --- Sección Guías ---
+          _construirEncabezadoSeccion(context, 'Guías'),
+          ListTile(
+            leading: const Icon(Icons.lightbulb_outline),
+            title: const Text('Guía de Funcionalidades'),
+            subtitle: const Text('Aprende sobre las características de las cápsulas'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const GuiaFuncionalidadesScreen()));
+            },
+          ),
+          FutureBuilder<bool>(
+            future: ServicioFirestore().esAdminOAutor(),
+            builder: (context, snapshot) {
+              if (snapshot.data ?? false) {
+                return ListTile(
+                  leading: const Icon(Icons.school_outlined),
+                  title: const Text('Guía para Autores'),
+                  subtitle: const Text('Aprende a crear cápsulas y usar markdown'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const GuiaAutoresScreen()));
+                  },
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+          if (_esAdmin) ListTile(
+            leading: const Icon(Icons.admin_panel_settings_outlined),
+            title: const Text('Panel de Guías'),
+            subtitle: const Text('Crear y editar guías (solo admins)'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const PanelAdminGuiasScreen()));
             },
           ),
 

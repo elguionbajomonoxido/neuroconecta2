@@ -49,7 +49,7 @@ class TarjetaCapsula extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: iconColor.withOpacity(0.1),
+                      color: iconColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(iconData, color: iconColor, size: 28),
@@ -97,7 +97,7 @@ class TarjetaCapsula extends StatelessWidget {
 
   Widget _buildTagTheme(BuildContext context, String text, {bool primary = true}) {
     final cs = Theme.of(context).colorScheme;
-    final bg = primary ? cs.primaryContainer : cs.surfaceVariant;
+    final bg = primary ? cs.primaryContainer : cs.surfaceContainerHighest;
     final fg = primary ? cs.onPrimaryContainer : cs.onSurface;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

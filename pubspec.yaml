@@ -46,6 +46,8 @@ dependencies:
   # UI & Utilities
   google_fonts: ^6.2.1
   flutter_markdown_plus: ^1.0.5
+  flutter_highlight: ^0.7.0
+  highlight: ^0.7.0
   intl: ^0.20.2
   url_launcher: ^6.3.0
   cupertino_icons: ^1.0.8

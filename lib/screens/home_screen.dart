@@ -176,7 +176,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
             for (final c in todasCapsulas) {
               if ((c.autor).isNotEmpty) autoresSet.add(c.autor);
             }
-            final autores = ['Todos', ...autoresSet.toList()];
+            final autores = ['Todos', ...autoresSet];
 
             Widget listaOrdenadaWidget(List<Capsula> lista) {
               // Ordenamientos simples

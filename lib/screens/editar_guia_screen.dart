@@ -1,0 +1,556 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:neuroconecta2/models/guia.dart';
+import 'package:neuroconecta2/services/guias_firestore_service.dart';
+import 'package:neuroconecta2/services/guias_storage_service.dart';
+import 'package:neuroconecta2/widgets/custom_markdown_body.dart';
+
+class EditarGuiaScreen extends StatefulWidget {
+  final Guia? guia;
+
+  const EditarGuiaScreen({super.key, this.guia});
+
+  @override
+  State<EditarGuiaScreen> createState() => _EditarGuiaScreenState();
+}
+
+class _EditarGuiaScreenState extends State<EditarGuiaScreen>
+    with SingleTickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
+  final _tituloController = TextEditingController();
+  String _tipoGuia = 'autores';
+  bool _guardando = false;
+  late List<BloqueGuia> _bloques;
+
+  final _guiasService = GuiasFirestoreService();
+  final _storageService = GuiasStorageService();
+
+  @override
+  void initState() {
+    super.initState();
+    final guia = widget.guia;
+    if (guia != null) {
+      _tituloController.text = guia.titulo;
+      _tipoGuia = guia.tipoGuia;
+      _bloques = List.from(guia.bloques);
+    } else {
+      _bloques = [BloqueGuia(tipo: 'texto', texto: '', orden: 0)];
+    }
+  }
+
+  @override
+  void dispose() {
+    _tituloController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _guardar() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (!_validarBloques()) return;
+    setState(() => _guardando = true);
+    try {
+      final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+      final bloquesOrdenados = _recalcularOrden();
+
+      if (widget.guia == null) {
+        await _guiasService.crearGuia(
+          titulo: _tituloController.text.trim(),
+          tipoGuia: _tipoGuia,
+          bloques: bloquesOrdenados,
+          creadoPorUid: userId,
+        );
+      } else {
+        await _guiasService.actualizarGuia(
+          guiaId: widget.guia!.id,
+          titulo: _tituloController.text.trim(),
+          tipoGuia: _tipoGuia,
+          bloques: bloquesOrdenados,
+        );
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al guardar: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _guardando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final esEdicion = widget.guia != null;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(esEdicion ? 'Editar guía' : 'Nueva guía'),
+        elevation: 0,
+      ),
+      body: Form(
+        key: _formKey,
+        child: DefaultTabController(
+          length: 2,
+          initialIndex: 0,
+          child: Column(
+            children: [
+              // Encabezado con título y tipo
+              Container(
+                color: Theme.of(context).colorScheme.surface,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _tituloController,
+                        decoration: const InputDecoration(
+                          labelText: 'Título',
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Requerido'
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: _tipoGuia,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Tipo de guía',
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'autores',
+                            child: Text('Autores'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'funcionalidades',
+                            child: Text('Funcionalidades'),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) setState(() => _tipoGuia = v);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // TabBar
+              TabBar(
+                tabs: [
+                  Tab(
+                    icon: const Icon(Icons.view_stream),
+                    text: isMobile ? 'Bloques' : 'Editar bloques',
+                  ),
+                  Tab(
+                    icon: const Icon(Icons.preview),
+                    text: isMobile ? 'Vista' : 'Vista previa',
+                  ),
+                ],
+              ),
+              // Contenido
+              Expanded(
+                child: TabBarView(
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    // Tab 1: Editor de bloques
+                    _buildBloquesEditor(),
+
+                    // Tab 2: Vista Previa
+                    SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Título y tipo
+                          Text(
+                            _tituloController.text.isEmpty
+                                ? 'Título aquí'
+                                : _tituloController.text,
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          Chip(
+                            label: Text(_tipoGuia),
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .primaryContainer,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Render de bloques intercalados
+                          if (_bloques.isEmpty)
+                            Center(
+                              child: Text(
+                                'Agrega bloques de texto o imagen para ver la vista previa',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            )
+                          else
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: _bloques
+                                  .map(
+                                    (b) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 16),
+                                      child: _renderBloque(b),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Botón Guardar
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _guardando ? null : _guardar,
+                    icon: _guardando
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save),
+                    label: Text(
+                      _guardando
+                          ? 'Guardando...'
+                          : (esEdicion ? 'Actualizar' : 'Crear'),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBloquesEditor() {
+    if (_bloques.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('Agrega tu primer bloque para comenzar'),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _agregarTexto,
+                  icon: const Icon(Icons.text_fields),
+                  label: const Text('Agregar texto'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _agregarImagen,
+                  icon: const Icon(Icons.add_photo_alternate),
+                  label: const Text('Agregar imagen'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          child: ReorderableListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: _bloques.length,
+            onReorder: (oldIndex, newIndex) {
+              setState(() {
+                if (newIndex > oldIndex) newIndex -= 1;
+                final item = _bloques.removeAt(oldIndex);
+                _bloques.insert(newIndex, item);
+                _recalcularOrden();
+              });
+            },
+            itemBuilder: (context, index) {
+              final bloque = _bloques[index];
+              return Card(
+                key: ValueKey('bloque_${bloque.tipo}_$index'),
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            bloque.tipo == 'texto'
+                                ? 'Bloque de texto'
+                                : 'Bloque de imagen',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          IconButton(
+                            onPressed: () => _eliminarBloque(index),
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      if (bloque.tipo == 'texto')
+                        TextFormField(
+                          key: ValueKey('texto_${index}_${bloque.orden}'),
+                          initialValue: bloque.texto ?? '',
+                          maxLines: null,
+                          decoration: const InputDecoration(
+                            labelText: 'Contenido (markdown)',
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: (v) => _actualizarTexto(index, v),
+                        )
+                      else
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (bloque.url != null && bloque.url!.isNotEmpty)
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: CachedNetworkImage(
+                                  imageUrl: bloque.url!,
+                                  height: 180,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            else
+                              Container(
+                                height: 180,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Center(
+                                  child: Text('Sin imagen'),
+                                ),
+                              ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: () => _cambiarImagen(index),
+                                  icon: const Icon(Icons.image),
+                                  label: const Text('Reemplazar imagen'),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: () => _eliminarBloque(index),
+                                  icon: const Icon(Icons.delete),
+                                  label: const Text('Eliminar bloque'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _agregarTexto,
+                  icon: const Icon(Icons.text_fields),
+                  label: const Text('Agregar texto'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _agregarImagen,
+                  icon: const Icon(Icons.add_photo_alternate),
+                  label: const Text('Agregar imagen'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _renderBloque(BloqueGuia bloque) {
+    if (bloque.tipo == 'imagen') {
+      if (bloque.url == null || bloque.url!.isEmpty) {
+        return Container(
+          height: 180,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Center(child: Text('Imagen faltante')),
+        );
+      }
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: CachedNetworkImage(
+          imageUrl: bloque.url!,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+
+    return CustomMarkdownBody(
+      data: bloque.texto ?? '',
+      selectable: true,
+    );
+  }
+
+  List<BloqueGuia> _recalcularOrden() {
+    for (var i = 0; i < _bloques.length; i++) {
+      final b = _bloques[i];
+      _bloques[i] = BloqueGuia(
+        tipo: b.tipo,
+        texto: b.texto,
+        url: b.url,
+        nombre: b.nombre,
+        orden: i,
+      );
+    }
+    return List<BloqueGuia>.from(_bloques);
+  }
+
+  void _actualizarTexto(int index, String value) {
+    setState(() {
+      final b = _bloques[index];
+      _bloques[index] = BloqueGuia(
+        tipo: 'texto',
+        texto: value,
+        orden: b.orden,
+      );
+    });
+  }
+
+  void _agregarTexto() {
+    setState(() {
+      _bloques.add(
+        BloqueGuia(
+          tipo: 'texto',
+          texto: '',
+          orden: _bloques.length,
+        ),
+      );
+    });
+  }
+
+  Future<void> _agregarImagen() async {
+    try {
+      final url = await _storageService.subirImagenConCompresion(
+        guiaId: widget.guia?.id ?? 'nueva',
+        onProgress: (progress) => debugPrint('Progreso de carga: $progress%'),
+      );
+      setState(() {
+        _bloques.add(
+          BloqueGuia(
+            tipo: 'imagen',
+            url: url,
+            nombre: 'Imagen ${_bloques.length + 1}',
+            orden: _bloques.length,
+          ),
+        );
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Imagen agregada')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al subir imagen: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _cambiarImagen(int index) async {
+    try {
+      final url = await _storageService.subirImagenConCompresion(
+        guiaId: widget.guia?.id ?? 'nueva',
+        onProgress: (progress) => debugPrint('Progreso de carga: $progress%'),
+      );
+      setState(() {
+        final b = _bloques[index];
+        _bloques[index] = BloqueGuia(
+          tipo: 'imagen',
+          url: url,
+          nombre: b.nombre ?? 'Imagen ${index + 1}',
+          orden: b.orden,
+        );
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Imagen reemplazada')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al reemplazar: $e')),
+        );
+      }
+    }
+  }
+
+  void _eliminarBloque(int index) {
+    setState(() {
+      _bloques.removeAt(index);
+      _recalcularOrden();
+    });
+  }
+
+  bool _validarBloques() {
+    final tieneTexto = _bloques.any(
+      (b) => b.tipo == 'texto' && (b.texto?.trim().isNotEmpty ?? false),
+    );
+
+    if (!tieneTexto) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Agrega al menos un bloque de texto')),
+      );
+      return false;
+    }
+    return true;
+  }
+}

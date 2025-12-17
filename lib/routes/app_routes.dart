@@ -10,6 +10,10 @@ import '../screens/crea_capsula_screen.dart';
 import '../screens/edita_capsula_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/editar_groserias_screen.dart';
+import '../screens/guia_funcionalidades_screen.dart';
+import '../screens/guia_autores_screen.dart';
+import '../screens/panel_admin_guias_screen.dart';
+import '../screens/editar_guia_screen.dart';
 
 class RutasAplicacion {
   static const String inicioSesion = '/inicio-sesion';
@@ -20,6 +24,10 @@ class RutasAplicacion {
   static const String detalleCapsula = '/detalle-capsula';
   static const String configuracion = '/configuracion';
   static const String editarGroserias = '/config/editar-groserias';
+  static const String guiaFuncionalidades = '/configuracion/guias-funcionalidades';
+  static const String guiaAutores = '/configuracion/guias-autores';
+  static const String panelAdminGuias = '/configuracion/panel-admin-guias';
+  static const String editarGuia = '/configuracion/editar-guia';
 
   // Flag para permitir navegación al login durante el cierre de sesión
   static bool isLoggingOut = false;
@@ -47,6 +55,29 @@ class RutasAplicacion {
       GoRoute(
         path: editarGroserias,
         builder: (context, state) => const EditarGroseriasScreen(),
+      ),
+      GoRoute(
+        path: guiaFuncionalidades,
+        builder: (context, state) => const GuiaFuncionalidadesScreen(),
+      ),
+      GoRoute(
+        path: guiaAutores,
+        builder: (context, state) => const GuiaAutoresScreen(),
+      ),
+      GoRoute(
+        path: panelAdminGuias,
+        builder: (context, state) => const PanelAdminGuiasScreen(),
+      ),
+      GoRoute(
+        path: '$editarGuia/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id'];
+          if (id != null && id != 'nuevo') {
+            // Editar guía existente (se hace desde el panel admin, no aquí)
+            return const PanelAdminGuiasScreen();
+          }
+          return const EditarGuiaScreen();
+        },
       ),
       GoRoute(
         path: crearCapsula,

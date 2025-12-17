@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Permitir lectura pública de todas las imágenes
+    match /guias/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+                      request.auth.token.admin == true ||
+                      exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+                      get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin';
+      allow delete: if request.auth != null && 
+                       request.auth.token.admin == true ||
+                       exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+                       get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin';
+    }
+
+    // Configuración por defecto: rechazar todo lo que no sea explícitamente permitido
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
