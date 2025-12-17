@@ -149,7 +149,7 @@ class _PantallaDetalleCapsulaState extends State<PantallaDetalleCapsula> {
                                   final cs = Theme.of(ctx).colorScheme;
                                   return Chip(
                                     label: Text(capsula.segmento.toUpperCase(), style: TextStyle(color: cs.onSurface)),
-                                    backgroundColor: cs.surfaceVariant,
+                                    backgroundColor: cs.surfaceContainerHighest,
                                   );
                                 },
                               ),

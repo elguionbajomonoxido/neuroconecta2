@@ -30,7 +30,24 @@ class Capsula {
   });
 
   factory Capsula.desdeFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+    final data = doc.data() as Map<String, dynamic>?;
+    if (data == null) {
+      // Retorna cápsula vacía si el documento no existe
+      return Capsula(
+        id: doc.id,
+        titulo: 'No disponible',
+        resumen: '',
+        contenidoLargo: '',
+        categoria: '',
+        segmento: 'adultos',
+        esBorrador: false,
+        mediaUrl: null,
+        creadoPorUid: '',
+        autor: '',
+        createdAt: DateTime.now(),
+        updatedAt: null,
+      );
+    }
     return Capsula(
       id: doc.id,
       titulo: data['titulo'] ?? '',
