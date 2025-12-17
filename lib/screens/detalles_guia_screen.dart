@@ -192,7 +192,7 @@ class _DetallesGuiaScreenState extends State<DetallesGuiaScreen> {
     return guia.bloques
         .map(
           (b) => Padding(
-            padding: const EdgeInsets.only(bottom: 24),
+            padding: const EdgeInsets.only(bottom: 0),
             child: b.tipo == 'imagen'
                 ? _renderImagen(b)
                 : _renderTexto(b),

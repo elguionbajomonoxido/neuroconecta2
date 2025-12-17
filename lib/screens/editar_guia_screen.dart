@@ -371,27 +371,17 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Agrega tu primer bloque para comenzar'),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _agregarTexto,
-                  icon: const Icon(Icons.text_fields),
-                  label: const Text('Texto (Markdown)'),
-                ),
-                ElevatedButton.icon(
-                  onPressed: _agregarTextoPlano,
-                  icon: const Icon(Icons.description),
-                  label: const Text('Texto plano'),
-                ),
-                ElevatedButton.icon(
-                  onPressed: _agregarImagen,
-                  icon: const Icon(Icons.add_photo_alternate),
-                  label: const Text('Agregar imagen'),
-                ),
-              ],
+            const Icon(Icons.add_circle_outline, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            const Text(
+              'Agrega tu primer bloque para comenzar',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Usa el botón flotante (+) para agregar contenido',
+              style: Theme.of(context).textTheme.labelSmall,
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -621,36 +611,6 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
         guiaId: widget.guia?.id ?? 'nueva',
         onProgress: (progress) => debugPrint('Progreso de carga: $progress%'),
         source: source,
-      );
-      setState(() {
-        _bloques.add(
-          BloqueGuia(
-            tipo: 'imagen',
-            url: url,
-            nombre: 'Imagen ${_bloques.length + 1}',
-            orden: _bloques.length,
-          ),
-        );
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Imagen agregada')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al subir imagen: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _agregarImagen() async {
-    try {
-      final url = await _storageService.subirImagenConCompresion(
-        guiaId: widget.guia?.id ?? 'nueva',
-        onProgress: (progress) => debugPrint('Progreso de carga: $progress%'),
       );
       setState(() {
         _bloques.add(
