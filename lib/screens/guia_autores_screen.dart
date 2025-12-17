@@ -201,7 +201,7 @@ class GuiaAutoresScreen extends StatelessWidget {
             ),
             if (guia.bloques.isNotEmpty)
               SizedBox(
-                height: 200,
+                height: 120,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -214,8 +214,8 @@ class GuiaAutoresScreen extends StatelessWidget {
                           child: AdaptiveImage(
                             imageUrl: bloque.url!,
                             fit: BoxFit.cover,
-                            width: 160,
-                            height: 200,
+                            width: 120,
+                            height: 120,
                           ),
                         ),
                       );

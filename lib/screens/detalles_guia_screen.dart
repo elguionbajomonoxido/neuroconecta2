@@ -209,9 +209,8 @@ class _DetallesGuiaScreenState extends State<DetallesGuiaScreen> {
       borderRadius: BorderRadius.circular(8),
       child: AdaptiveImage(
         imageUrl: bloque.url!,
-        fit: BoxFit.cover,
+        fit: BoxFit.contain,
         width: double.infinity,
-        height: 300,
       ),
     );
   }
