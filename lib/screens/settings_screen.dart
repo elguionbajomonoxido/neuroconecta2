@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -450,8 +452,8 @@ class _PaginaConfiguracionState extends State<PaginaConfiguracion> {
                 Slider(
                   value: configuracion.factorEscalaTexto,
                   min: 0.8,
-                  max: 1.5,
-                  divisions: 7,
+                  max: 1.25,
+                  divisions: 9,
                   label: configuracion.factorEscalaTexto.toStringAsFixed(1),
                   onChanged: (val) => configuracion.establecerFactorEscalaTexto(val),
                 ),

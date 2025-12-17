@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 import 'package:neuroconecta2/models/guia.dart';
 import 'package:neuroconecta2/services/guias_firestore_service.dart';
 import 'package:neuroconecta2/services/firestore_service.dart' as fs;
@@ -45,7 +46,7 @@ class GuiaAutoresScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => context.pop(),
                     child: const Text('Volver'),
                   ),
                 ],
@@ -63,7 +64,7 @@ class GuiaAutoresScreen extends StatelessWidget {
                   const Text('Esta guía solo está disponible para autores y admins'),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => context.pop(),
                     child: const Text('Volver'),
                   ),
                 ],

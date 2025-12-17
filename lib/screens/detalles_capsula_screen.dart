@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:go_router/go_router.dart';
@@ -57,6 +59,8 @@ class _PantallaDetalleCapsulaState extends State<PantallaDetalleCapsula> {
         ],
       ),
     );
+
+    if (!mounted) return;
 
     if (confirm == true && mounted) {
       await _servicioFirestore.eliminarCapsula(widget.capsuleId);

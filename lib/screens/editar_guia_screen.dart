@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:neuroconecta2/models/guia.dart';
 import 'package:neuroconecta2/services/guias_firestore_service.dart';
 import 'package:neuroconecta2/services/guias_storage_service.dart';
@@ -68,7 +70,7 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
           bloques: bloquesOrdenados,
         );
       }
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) context.pop(true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -87,75 +89,17 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
     final isMobile = screenWidth < 600;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(esEdicion ? 'Editar guía' : 'Nueva guía'),
-        elevation: 0,
-      ),
-      body: Form(
-        key: _formKey,
-        child: DefaultTabController(
-          length: 2,
-          initialIndex: 0,
-          child: Column(
-            children: [
-              // Encabezado con título y tipo
-              Container(
-                color: Theme.of(context).colorScheme.surface,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _tituloController,
-                        decoration: const InputDecoration(
-                          labelText: 'Título',
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Requerido'
-                            : null,
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: _tipoGuia,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Tipo de guía',
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'autores',
-                            child: Text('Autores'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'funcionalidades',
-                            child: Text('Funcionalidades'),
-                          ),
-                        ],
-                        onChanged: (v) {
-                          if (v != null) setState(() => _tipoGuia = v);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // TabBar
-              TabBar(
+      body: DefaultTabController(
+        length: 2,
+        initialIndex: 0,
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) => [
+            SliverAppBar(
+              title: Text(esEdicion ? 'Editar guía' : 'Nueva guía'),
+              floating: true,
+              snap: true,
+              elevation: innerBoxIsScrolled ? 4 : 0,
+              bottom: TabBar(
                 tabs: [
                   Tab(
                     icon: const Icon(Icons.view_stream),
@@ -167,89 +111,223 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
                   ),
                 ],
               ),
-              // Contenido
-              Expanded(
-                child: TabBarView(
-                  physics: const NeverScrollableScrollPhysics(),
+            ),
+          ],
+          body: Form(
+            key: _formKey,
+            child: TabBarView(
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                // Tab 1: Editor de bloques
+                Column(
                   children: [
-                    // Tab 1: Editor de bloques
-                    _buildBloquesEditor(),
-
-                    // Tab 2: Vista Previa
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Título y tipo
-                          Text(
-                            _tituloController.text.isEmpty
-                                ? 'Título aquí'
-                                : _tituloController.text,
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                          const SizedBox(height: 8),
-                          Chip(
-                            label: Text(_tipoGuia),
-                            backgroundColor: Theme.of(context)
-                                .colorScheme
-                                .primaryContainer,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Render de bloques intercalados
-                          if (_bloques.isEmpty)
-                            Center(
-                              child: Text(
-                                'Agrega bloques de texto o imagen para ver la vista previa',
-                                style: Theme.of(context).textTheme.bodyMedium,
+                    // Encabezado con título y tipo
+                    Container(
+                      color: Theme.of(context).colorScheme.surface,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              controller: _tituloController,
+                              decoration: const InputDecoration(
+                                labelText: 'Título',
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                                border: OutlineInputBorder(),
                               ),
-                            )
-                          else
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: _bloques
-                                  .map(
-                                    (b) => Padding(
-                                      padding: const EdgeInsets.only(bottom: 16),
-                                      child: _renderBloque(b),
-                                    ),
-                                  )
-                                  .toList(),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? 'Requerido'
+                                  : null,
                             ),
-                        ],
+                            const SizedBox(height: 12),
+                            DropdownButtonFormField<String>(
+                              initialValue: _tipoGuia,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Tipo de guía',
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                                border: OutlineInputBorder(),
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'autores',
+                                  child: Text('Autores'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'funcionalidades',
+                                  child: Text('Funcionalidades'),
+                                ),
+                              ],
+                              onChanged: (v) {
+                                if (v != null) setState(() => _tipoGuia = v);
+                              },
+                            ),
+                          ],
+                        ),
                       ),
+                    ),
+                    // Contenido: Editor de bloques
+                    Expanded(
+                      child: _buildBloquesEditor(),
                     ),
                   ],
                 ),
-              ),
 
-              // Botón Guardar
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _guardando ? null : _guardar,
-                    icon: _guardando
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save),
-                    label: Text(
-                      _guardando
-                          ? 'Guardando...'
-                          : (esEdicion ? 'Actualizar' : 'Crear'),
-                    ),
+                // Tab 2: Vista Previa
+                SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Título y tipo
+                      Text(
+                        _tituloController.text.isEmpty
+                            ? 'Título aquí'
+                            : _tituloController.text,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Chip(
+                        label: Text(_tipoGuia),
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .primaryContainer,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Render de bloques intercalados
+                      if (_bloques.isEmpty)
+                        Center(
+                          child: Text(
+                            'Agrega bloques de texto o imagen para ver la vista previa',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        )
+                      else
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: _bloques
+                              .map(
+                                (b) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: _renderBloque(b),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                    ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
+      floatingActionButton: _buildFloatingMenu(),
+    );
+  }
+
+  /// Menú flotante con opciones de guardar, cancelar y agregar bloques
+  Widget _buildFloatingMenu() {
+    return Stack(
+      alignment: Alignment.bottomRight,
+      children: [
+        // Opción: Guardar
+        Positioned(
+          bottom: 110,
+          right: 10,
+          child: _FloatingMenuAction(
+            icon: Icons.save,
+            label: 'Guardar',
+            onPressed: _guardando ? null : _guardar,
+            loading: _guardando,
+            heroTag: 'fab-guardar',
+          ),
+        ),
+        // Opción: Cancelar
+        Positioned(
+          bottom: 65,
+          right: 10,
+          child: _FloatingMenuAction(
+            icon: Icons.close,
+            label: 'Cancelar',
+            onPressed: () => context.pop(),
+            heroTag: 'fab-cancelar',
+          ),
+        ),
+        // Botón principal del menú -> mostrar Modal Bottom Sheet
+        FloatingActionButton(
+          heroTag: 'fab-agregar-menu',
+          onPressed: () {
+            showModalBottomSheet<void>(
+              context: context,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              builder: (sheetContext) {
+                return SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.text_fields),
+                          title: const Text('Agregar texto'),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            // Ejecutar la acción después de cerrar el sheet
+                            Future.microtask(() => _agregarTexto());
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.photo_library),
+                          title: const Text('Elegir de galería'),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            Future.microtask(
+                              () => _agregarImagenDesde(ImageSource.gallery),
+                            );
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.camera_alt),
+                          title: const Text('Tomar foto'),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            Future.microtask(
+                              () => _agregarImagenDesde(ImageSource.camera),
+                            );
+                          },
+                        ),
+                        const Divider(height: 8),
+                        ListTile(
+                          leading: const Icon(Icons.close),
+                          title: const Text('Cancelar'),
+                          onTap: () => Navigator.pop(sheetContext),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+          tooltip: 'Agregar bloque',
+          child: const Icon(Icons.add),
+        ),
+      ],
     );
   }
 
@@ -383,28 +461,6 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
             },
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _agregarTexto,
-                  icon: const Icon(Icons.text_fields),
-                  label: const Text('Agregar texto'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _agregarImagen,
-                  icon: const Icon(Icons.add_photo_alternate),
-                  label: const Text('Agregar imagen'),
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -472,6 +528,37 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
         ),
       );
     });
+  }
+
+  Future<void> _agregarImagenDesde(ImageSource source) async {
+    try {
+      final url = await _storageService.subirImagenConCompresion(
+        guiaId: widget.guia?.id ?? 'nueva',
+        onProgress: (progress) => debugPrint('Progreso de carga: $progress%'),
+        source: source,
+      );
+      setState(() {
+        _bloques.add(
+          BloqueGuia(
+            tipo: 'imagen',
+            url: url,
+            nombre: 'Imagen ${_bloques.length + 1}',
+            orden: _bloques.length,
+          ),
+        );
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Imagen agregada')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al subir imagen: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _agregarImagen() async {
@@ -552,5 +639,44 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
       return false;
     }
     return true;
+  }
+}
+
+/// Widget para representar una acción en el menú flotante
+class _FloatingMenuAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+  final bool loading;
+  final String heroTag;
+
+  const _FloatingMenuAction({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.loading = false,
+    required this.heroTag,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: label,
+      child: FloatingActionButton.small(
+        heroTag: heroTag,
+        onPressed: onPressed,
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+        child: loading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                ),
+              )
+            : Icon(icon),
+      ),
+    );
   }
 }

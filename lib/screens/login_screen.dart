@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../services/auth_service.dart';
@@ -93,12 +95,14 @@ class _PantallaLoginState extends State<PantallaLogin> {
               
               try {
                 await _servicioAutenticacion.enviarCorreoRecuperacionContrasena(email);
+                if (!mounted) return;
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Correo de recuperación enviado. Revisa tu bandeja.')),
                   );
                 }
               } catch (e) {
+                if (!mounted) return;
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),

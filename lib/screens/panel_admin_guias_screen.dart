@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:neuroconecta2/models/guia.dart';
 import 'package:neuroconecta2/services/guias_firestore_service.dart';
 import 'package:neuroconecta2/screens/editar_guia_screen.dart';
@@ -44,7 +45,7 @@ class PanelAdminGuiasScreen extends StatelessWidget {
                   Text('Error: ${snapshot.error}'),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => context.pop(),
                     child: const Text('Volver'),
                   ),
                 ],

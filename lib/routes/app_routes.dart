@@ -35,6 +35,10 @@ class RutasAplicacion {
   static final GoRouter router = GoRouter(
     initialLocation: inicioSesion,
     refreshListenable: GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
+    // Asegurar que el botón back de Android navega a la pantalla anterior
+    onException: (context, state, exception) {
+      debugPrint('GoRouter Exception: $exception');
+    },
     routes: [
       GoRoute(
         path: inicioSesion,

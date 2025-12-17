@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -13,14 +15,24 @@ class GuiasStorageService {
   /// Retorna URL de la imagen descargable
   /// [guiaId] - ID de la guía para organizar en storage
   /// [onProgress] - callback para actualizar progreso (0-100)
+  /// [source] - fuente de la imagen: cámara o galería (por defecto: galería)
   /// Lanza excepción si la imagen supera 5MB
   Future<String> subirImagenConCompresion({
     required String guiaId,
     required Function(int) onProgress,
+    ImageSource source = ImageSource.gallery,
   }) async {
     try {
+      // Verificar autenticación
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        debugPrint('[GuiasStorageService] ❌ Usuario NO autenticado');
+        throw Exception('Usuario no autenticado. Inicia sesión para subir imágenes.');
+      }
+      debugPrint('[GuiasStorageService] ✓ Usuario autenticado: ${currentUser.email}');
+
       final XFile? imagen = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         imageQuality: 80, // Compresión automática al 80%
       );
 
@@ -39,26 +51,61 @@ class GuiasStorageService {
         );
       }
 
+      debugPrint('[GuiasStorageService] 📸 Imagen seleccionada: ${imagen.name}, tamaño: ${fileSize ~/ 1024} KB');
+
       final String nombreArchivo =
           '${DateTime.now().millisecondsSinceEpoch}_${imagen.name}';
-      final Reference ref = _storage.ref('guias/$guiaId/$nombreArchivo');
+      
+      // Usar una ruta más segura y consistente
+      final String rutaStorage = 'guias/$guiaId/$nombreArchivo';
+      debugPrint('[GuiasStorageService] 📁 Subiendo a: $rutaStorage');
+      
+      final Reference ref = _storage.ref(rutaStorage);
 
-      final UploadTask uploadTask = ref.putFile(file);
+      // Determinar tipo de contenido dinámicamente
+      String contentType = 'image/jpeg';
+      if (imagen.name.toLowerCase().endsWith('.png')) {
+        contentType = 'image/png';
+      } else if (imagen.name.toLowerCase().endsWith('.gif')) {
+        contentType = 'image/gif';
+      } else if (imagen.name.toLowerCase().endsWith('.webp')) {
+        contentType = 'image/webp';
+      }
+
+      final UploadTask uploadTask = ref.putFile(
+        file,
+        SettableMetadata(
+          contentType: contentType,
+          customMetadata: {
+            'uploadedAt': DateTime.now().toIso8601String(),
+            'uploadedBy': currentUser.uid,
+            'guiaId': guiaId,
+          },
+        ),
+      );
 
       // Escuchar progreso de carga
       uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
         final int percent = ((snapshot.bytesTransferred / snapshot.totalBytes) *
                 100)
             .toInt();
+        debugPrint('[GuiasStorageService] ⏳ Progreso: $percent% (${snapshot.bytesTransferred ~/ 1024} KB / ${snapshot.totalBytes ~/ 1024} KB)');
         onProgress(percent);
       });
 
       await uploadTask;
+      debugPrint('[GuiasStorageService] ✓ Upload completado');
 
       // Obtener URL descargable
       final String urlDescargable = await ref.getDownloadURL();
+      debugPrint('[GuiasStorageService] 🔗 URL obtenida: $urlDescargable');
       return urlDescargable;
+    } on FirebaseException catch (e) {
+      debugPrint('[GuiasStorageService] ❌ FirebaseException: ${e.code} - ${e.message}');
+      debugPrint('[GuiasStorageService] ❌ Plugin code: ${e.plugin}');
+      throw Exception('Error Firebase al subir imagen: ${e.code} - ${e.message}');
     } catch (e) {
+      debugPrint('[GuiasStorageService] ❌ Error general: $e');
       throw Exception('Error al subir imagen: $e');
     }
   }
