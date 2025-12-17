@@ -99,6 +99,26 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
               floating: true,
               snap: true,
               elevation: innerBoxIsScrolled ? 4 : 0,
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: ElevatedButton.icon(
+                    onPressed: _guardando ? null : _guardar,
+                    icon: _guardando
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save),
+                    label: Text(_guardando ? 'Guardando...' : 'Guardar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
               bottom: TabBar(
                 tabs: [
                   Tab(

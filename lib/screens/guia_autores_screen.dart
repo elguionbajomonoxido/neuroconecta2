@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:neuroconecta2/models/guia.dart';
 import 'package:neuroconecta2/services/guias_firestore_service.dart';
 import 'package:neuroconecta2/services/firestore_service.dart' as fs;
-import 'package:neuroconecta2/widgets/custom_markdown_body.dart';
 import 'package:neuroconecta2/widgets/adaptive_image.dart';
 
 class GuiaAutoresScreen extends StatelessWidget {
@@ -109,25 +108,7 @@ class GuiaAutoresScreen extends StatelessWidget {
                       return ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
-                          Card(
-                            child: ExpansionTile(
-                              initiallyExpanded: true,
-                              title: Text(guiaEjemplo.titulo.isNotEmpty
-                                  ? guiaEjemplo.titulo
-                                  : 'Guía para Autores'),
-                              subtitle: Text(guiaEjemplo.tipoGuia),
-                              children: [
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: _renderBloques(context, guiaEjemplo),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          _construirTarjetaGuia(context, guiaEjemplo),
                         ],
                       );
                     }
@@ -164,29 +145,9 @@ class GuiaAutoresScreen extends StatelessWidget {
                 return b.createdAt.compareTo(a.createdAt);
               });
 
-              return ListView.separated(
+              return ListView(
                 padding: const EdgeInsets.all(16),
-                itemCount: guias.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final guia = guias[index];
-                  return Card(
-                    child: ExpansionTile(
-                      title: Text(guia.titulo),
-                      subtitle: Text(guia.tipoGuia),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: _renderBloques(context, guia),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                children: guias.map((guia) => _construirTarjetaGuia(context, guia)).toList(),
               );
             },
           );
@@ -216,47 +177,62 @@ class GuiaAutoresScreen extends StatelessWidget {
     }
   }
 
-  List<Widget> _renderBloques(BuildContext context, Guia guia) {
-    if (guia.bloques.isEmpty) {
-      return [
-        CustomMarkdownBody(
-          data: guia.contenidoMarkdown,
-          selectable: true,
+  Widget _construirTarjetaGuia(BuildContext context, Guia guia) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: InkWell(
+        onTap: () => context.push('/detalles-guia/${guia.id}'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(guia.titulo, style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Actualizado: ${guia.updatedAt?.toString().split('.')[0] ?? guia.createdAt.toString().split('.')[0]}',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ],
+              ),
+            ),
+            if (guia.bloques.isNotEmpty)
+              SizedBox(
+                height: 200,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: guia.bloques.take(3).map((bloque) {
+                    if (bloque.tipo == 'imagen' && bloque.url != null && bloque.url!.isNotEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: AdaptiveImage(
+                            imageUrl: bloque.url!,
+                            fit: BoxFit.cover,
+                            width: 160,
+                            height: 200,
+                          ),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }).toList(),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton(
+                onPressed: () => context.push('/detalles-guia/${guia.id}'),
+                child: const Text('Ver detalles'),
+              ),
+            ),
+          ],
         ),
-      ];
-    }
-
-    return guia.bloques
-        .map(
-          (b) => Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: b.tipo == 'texto'
-                ? CustomMarkdownBody(data: b.texto ?? '', selectable: true)
-                : _imagenWidget(b),
-          ),
-        )
-        .toList();
-  }
-
-  Widget _imagenWidget(BloqueGuia b) {
-    if (b.url == null || b.url!.isEmpty) {
-      return Container(
-        height: 180,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Center(child: Text('Imagen no disponible')),
-      );
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: AdaptiveImage(
-        imageUrl: b.url!,
-        fit: BoxFit.cover,
-        height: 200,
       ),
     );
   }
