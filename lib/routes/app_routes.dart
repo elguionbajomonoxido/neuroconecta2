@@ -14,6 +14,9 @@ import '../screens/guia_funcionalidades_screen.dart';
 import '../screens/guia_autores_screen.dart';
 import '../screens/panel_admin_guias_screen.dart';
 import '../screens/editar_guia_screen.dart';
+import '../screens/detalles_guia_screen.dart';
+import '../models/guia.dart';
+import '../services/guias_firestore_service.dart';
 
 class RutasAplicacion {
   static const String inicioSesion = '/inicio-sesion';
@@ -28,6 +31,8 @@ class RutasAplicacion {
   static const String guiaAutores = '/configuracion/guias-autores';
   static const String panelAdminGuias = '/configuracion/panel-admin-guias';
   static const String editarGuia = '/configuracion/editar-guia';
+  static const String detallesGuia = '/detalles-guia';
+  static const String editarGuiaDetalle = '/editar-guia';
 
   // Flag para permitir navegación al login durante el cierre de sesión
   static bool isLoggingOut = false;
@@ -35,6 +40,10 @@ class RutasAplicacion {
   static final GoRouter router = GoRouter(
     initialLocation: inicioSesion,
     refreshListenable: GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
+    // Asegurar que el botón back de Android navega a la pantalla anterior
+    onException: (context, state, exception) {
+      debugPrint('GoRouter Exception: $exception');
+    },
     routes: [
       GoRoute(
         path: inicioSesion,
@@ -77,6 +86,37 @@ class RutasAplicacion {
             return const PanelAdminGuiasScreen();
           }
           return const EditarGuiaScreen();
+        },
+      ),
+      GoRoute(
+        path: '$detallesGuia/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return DetallesGuiaScreen(guiaId: id);
+        },
+      ),
+      GoRoute(
+        path: '$editarGuiaDetalle/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return FutureBuilder<Guia?>(
+            future: GuiasFirestoreService().obtenerGuia(id).first,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snapshot.hasError || !snapshot.hasData) {
+                return Scaffold(
+                  body: Center(
+                    child: Text('Error: No se pudo cargar la guía'),
+                  ),
+                );
+              }
+              return EditarGuiaScreen(guia: snapshot.data);
+            },
+          );
         },
       ),
       GoRoute(

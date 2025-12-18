@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:go_router/go_router.dart';
@@ -57,6 +59,8 @@ class _PantallaDetalleCapsulaState extends State<PantallaDetalleCapsula> {
         ],
       ),
     );
+
+    if (!mounted) return;
 
     if (confirm == true && mounted) {
       await _servicioFirestore.eliminarCapsula(widget.capsuleId);
@@ -195,12 +199,21 @@ class _PantallaDetalleCapsulaState extends State<PantallaDetalleCapsula> {
                 const SizedBox(height: 16),
 
                 // Contenido Markdown
-                MarkdownBody(
-                  data: capsula.contenidoLargo,
-                  styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                    p: Theme.of(context).textTheme.bodyLarge,
-                    h1: Theme.of(context).textTheme.displaySmall,
-                    h2: Theme.of(context).textTheme.titleLarge,
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: MarkdownBody(
+                    data: capsula.contenidoLargo,
+                    styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                      p: Theme.of(context).textTheme.bodyLarge,
+                      h1: Theme.of(context).textTheme.displaySmall,
+                      h2: Theme.of(context).textTheme.titleLarge,
+                    ),
                   ),
                 ),
                 

@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:neuroconecta2/models/guia.dart';
@@ -88,9 +90,11 @@ class _GaleriaImagenesConDragDropState
               try {
                 await widget.storageService
                     .eliminarImagen(urlImagen: _imagenes[index].url);
+                if (!mounted) return;
                 setState(() => _imagenes.removeAt(index));
                 widget.onImagenesChanged(_imagenes);
               } catch (e) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Error al eliminar: $e')),
                 );

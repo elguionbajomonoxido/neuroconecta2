@@ -43,7 +43,7 @@ class PantallaBienvenida extends StatelessWidget {
                 '¡Bienvenido a\nNeuroConecta!',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                      color: const Color.fromRGBO(179, 157, 219, 1),
+                      color: Theme.of(context).colorScheme.primary,
                       height: 1.2,
                     ),
               ),

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 import 'package:neuroconecta2/models/guia.dart';
 import 'package:neuroconecta2/services/guias_firestore_service.dart';
 import 'package:neuroconecta2/services/firestore_service.dart' as fs;
-import 'package:neuroconecta2/widgets/custom_markdown_body.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 class GuiaAutoresScreen extends StatelessWidget {
   // ID de la guía principal que sirve como ejemplo
@@ -45,7 +44,7 @@ class GuiaAutoresScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => context.pop(),
                     child: const Text('Volver'),
                   ),
                 ],
@@ -63,7 +62,7 @@ class GuiaAutoresScreen extends StatelessWidget {
                   const Text('Esta guía solo está disponible para autores y admins'),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => context.pop(),
                     child: const Text('Volver'),
                   ),
                 ],
@@ -108,25 +107,7 @@ class GuiaAutoresScreen extends StatelessWidget {
                       return ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
-                          Card(
-                            child: ExpansionTile(
-                              initiallyExpanded: true,
-                              title: Text(guiaEjemplo.titulo.isNotEmpty
-                                  ? guiaEjemplo.titulo
-                                  : 'Guía para Autores'),
-                              subtitle: Text(guiaEjemplo.tipoGuia),
-                              children: [
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: _renderBloques(context, guiaEjemplo),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          _construirTarjetaGuia(context, guiaEjemplo),
                         ],
                       );
                     }
@@ -163,29 +144,9 @@ class GuiaAutoresScreen extends StatelessWidget {
                 return b.createdAt.compareTo(a.createdAt);
               });
 
-              return ListView.separated(
+              return ListView(
                 padding: const EdgeInsets.all(16),
-                itemCount: guias.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final guia = guias[index];
-                  return Card(
-                    child: ExpansionTile(
-                      title: Text(guia.titulo),
-                      subtitle: Text(guia.tipoGuia),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: _renderBloques(context, guia),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                children: guias.map((guia) => _construirTarjetaGuia(context, guia)).toList(),
               );
             },
           );
@@ -215,53 +176,19 @@ class GuiaAutoresScreen extends StatelessWidget {
     }
   }
 
-  List<Widget> _renderBloques(BuildContext context, Guia guia) {
-    if (guia.bloques.isEmpty) {
-      return [
-        CustomMarkdownBody(
-          data: guia.contenidoMarkdown,
-          selectable: true,
-        ),
-      ];
-    }
-
-    return guia.bloques
-        .map(
-          (b) => Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: b.tipo == 'texto'
-                ? CustomMarkdownBody(data: b.texto ?? '', selectable: true)
-                : _imagenWidget(b),
+  Widget _construirTarjetaGuia(BuildContext context, Guia guia) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () => context.push('/detalles-guia/${guia.id}'),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Text(
+            guia.titulo,
+            style: Theme.of(context).textTheme.titleMedium,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        )
-        .toList();
-  }
-
-  Widget _imagenWidget(BloqueGuia b) {
-    if (b.url == null || b.url!.isEmpty) {
-      return Container(
-        height: 180,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Center(child: Text('Imagen no disponible')),
-      );
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: CachedNetworkImage(
-        imageUrl: b.url!,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => Container(
-          color: Colors.grey[300],
-          child: const Center(child: CircularProgressIndicator()),
-        ),
-        errorWidget: (context, url, error) => Container(
-          color: Colors.grey[300],
-          child: const Icon(Icons.error),
         ),
       ),
     );
