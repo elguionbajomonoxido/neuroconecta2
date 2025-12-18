@@ -23,6 +23,7 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
   final _tituloController = TextEditingController();
   String _tipoGuia = 'autores';
   bool _guardando = false;
+  bool _esAdmin = false;
   late List<BloqueGuia> _bloques;
 
   final _guiasService = GuiasFirestoreService();
@@ -31,6 +32,7 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
   @override
   void initState() {
     super.initState();
+    _verificarAdmin();
     final guia = widget.guia;
     if (guia != null) {
       _tituloController.text = guia.titulo;
@@ -38,6 +40,16 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
       _bloques = List.from(guia.bloques);
     } else {
       _bloques = [BloqueGuia(tipo: 'texto', texto: '', orden: 0)];
+    }
+  }
+
+  Future<void> _verificarAdmin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final claims = await user.getIdTokenResult();
+      setState(() {
+        _esAdmin = claims.claims?['admin'] == true;
+      });
     }
   }
 
@@ -82,6 +94,51 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
     }
   }
 
+  Future<void> _mostrarConfirmacionEliminar(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar guía'),
+        content: Text('¿Eliminar "${_tituloController.text}"? Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      await _eliminarGuia();
+    }
+  }
+
+  Future<void> _eliminarGuia() async {
+    try {
+      setState(() => _guardando = true);
+      await _guiasService.eliminarGuia(widget.guia!.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Guía eliminada')),
+        );
+        context.pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al eliminar: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _guardando = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final esEdicion = widget.guia != null;
@@ -100,6 +157,22 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
               snap: true,
               elevation: innerBoxIsScrolled ? 4 : 0,
               actions: [
+                if (esEdicion && _esAdmin)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    child: Center(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _mostrarConfirmacionEliminar(context),
+                        icon: const Icon(Icons.delete),
+                        label: const Text('Eliminar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade100,
+                          foregroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                      ),
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                   child: Center(
@@ -574,9 +647,11 @@ class _EditarGuiaScreenState extends State<EditarGuiaScreen>
     setState(() {
       final b = _bloques[index];
       _bloques[index] = BloqueGuia(
-        tipo: 'texto',
+        tipo: b.tipo,
         texto: value,
         orden: b.orden,
+        url: b.url,
+        nombre: b.nombre,
       );
     });
   }

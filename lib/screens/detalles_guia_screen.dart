@@ -27,10 +27,16 @@ class _DetallesGuiaScreenState extends State<DetallesGuiaScreen> {
 
   Future<void> _verificarAutenticacion() async {
     final user = FirebaseAuth.instance.currentUser;
-    // Por ahora simplemente verificar que esté autenticado
-    setState(() {
-      _esAdmin = user != null;
-    });
+    if (user != null) {
+      final claims = await user.getIdTokenResult();
+      setState(() {
+        _esAdmin = claims.claims?['admin'] == true;
+      });
+    } else {
+      setState(() {
+        _esAdmin = false;
+      });
+    }
   }
 
   Future<void> _eliminarGuia() async {

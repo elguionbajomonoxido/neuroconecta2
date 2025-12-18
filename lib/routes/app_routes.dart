@@ -15,6 +15,8 @@ import '../screens/guia_autores_screen.dart';
 import '../screens/panel_admin_guias_screen.dart';
 import '../screens/editar_guia_screen.dart';
 import '../screens/detalles_guia_screen.dart';
+import '../models/guia.dart';
+import '../services/guias_firestore_service.dart';
 
 class RutasAplicacion {
   static const String inicioSesion = '/inicio-sesion';
@@ -96,8 +98,25 @@ class RutasAplicacion {
       GoRoute(
         path: '$editarGuiaDetalle/:id',
         builder: (context, state) {
-          // TODO: Implementar edición de guía desde detalles
-          return EditarGuiaScreen(guia: null);
+          final id = state.pathParameters['id']!;
+          return FutureBuilder<Guia?>(
+            future: GuiasFirestoreService().obtenerGuia(id).first,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snapshot.hasError || !snapshot.hasData) {
+                return Scaffold(
+                  body: Center(
+                    child: Text('Error: No se pudo cargar la guía'),
+                  ),
+                );
+              }
+              return EditarGuiaScreen(guia: snapshot.data);
+            },
+          );
         },
       ),
       GoRoute(
