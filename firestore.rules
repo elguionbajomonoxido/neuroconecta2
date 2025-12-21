@@ -28,6 +28,21 @@ service cloud.firestore {
         );
     }
 
+    // GUIAS
+    match /guias/{guiaId} {
+      // Permitir lectura pública (igual que capsulas)
+      allow read: if true;
+
+      // Crear: usuario autenticado y creador debe coincidir
+      allow create: if isSignedIn()
+        && request.resource.data.creadoPorUid == request.auth.uid
+        && request.resource.data.titulo is string;
+
+      // Actualizar o eliminar: admin o creador
+      allow update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.creadoPorUid == request.auth.uid);
+    }
+
     // RETROALIMENTACIONES
     match /retroalimentaciones/{fbId} {
       allow read: if true;

@@ -128,6 +128,7 @@ class _PaginaInicioState extends State<PaginaInicio> {
   Widget build(BuildContext context) {
     final configuracion = Provider.of<ControladorConfiguracion>(context);
     final favController = Provider.of<FavoritosController>(context, listen: false);
+    final offline = context.select<FavoritosController, bool>((c) => c.isOffline);
     final tema = Theme.of(context);
 
     return Scaffold(
@@ -150,7 +151,15 @@ class _PaginaInicioState extends State<PaginaInicio> {
         actions: [
           IconButton(
             icon: Icon(Icons.favorite, color: Colors.red),
-            onPressed: () => context.push(RutasAplicacion.favoritos),
+            onPressed: () {
+              if (offline) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Sin conexión. Conéctate a internet para continuar.')),
+                );
+                return;
+              }
+              context.push(RutasAplicacion.favoritos);
+            },
             tooltip: 'Ver Favoritos',
           ),
           IconButton(
@@ -161,154 +170,177 @@ class _PaginaInicioState extends State<PaginaInicio> {
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: StreamBuilder<List<Capsula>>(
-          stream: _servicioFirestore.obtenerCapsulas(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            }
-
-            final todasCapsulas = snapshot.data ?? [];
-
-            final capsulasFiltradas = todasCapsulas.where((c) {
-              if (!_esAdmin && c.esBorrador) return false;
-              if (configuracion.modoNinosActivado && c.segmento != 'niños') return false;
-              return true;
-            }).toList();
-
-            final listaPorAutor = (_autorFiltro == null || _autorFiltro == 'Todos')
-                ? capsulasFiltradas
-                : capsulasFiltradas.where((c) => c.autor == _autorFiltro).toList();
-
-            final autoresSet = <String>{};
-            for (final c in todasCapsulas) {
-              if ((c.autor).isNotEmpty) autoresSet.add(c.autor);
-            }
-            final autores = ['Todos', ...autoresSet];
-
-            void ordenarLista(List<Capsula> lista) {
-              switch (_ordenSeleccionado) {
-                case 'A_to_Z':
-                  lista.sort((a, b) => a.titulo.toLowerCase().compareTo(b.titulo.toLowerCase()));
-                  break;
-                case 'Z_to_A':
-                  lista.sort((a, b) => b.titulo.toLowerCase().compareTo(a.titulo.toLowerCase()));
-                  break;
-                case 'relevancia':
-                  lista.sort((a, b) {
-                    final pa = _promedios[a.id] ?? 0.0;
-                    final pb = _promedios[b.id] ?? 0.0;
-                    return pb.compareTo(pa);
-                  });
-                  break;
-                case 'mas_reciente':
-                  lista.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-                  break;
-                case 'mas_antigua':
-                  lista.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-                  break;
-              }
-            }
-
-            if (capsulasFiltradas.isEmpty) {
-              return const Center(
-                child: Text(
-                  'No hay cápsulas disponibles por el momento.',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+        child: Column(
+          children: [
+            if (offline)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(top: 8, bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              );
-            }
+                child: Row(
+                  children: const [
+                    Icon(Icons.wifi_off, color: Colors.orange),
+                    SizedBox(width: 8),
+                    Expanded(child: Text('Sin conexión. Conéctate a internet para continuar.')),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: StreamBuilder<List<Capsula>>(
+                stream: _servicioFirestore.obtenerCapsulas(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-            return Column(
-              children: [
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Flexible(
-                      fit: FlexFit.loose,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: PopupMenuButton<String>(
-                          initialValue: _ordenSeleccionado,
-                          onSelected: (val) async {
-                            setState(() => _ordenSeleccionado = val);
-                            await _guardarOrdenSeleccionado(val);
-                            if (val == 'relevancia') {
-                              if (!_promediosCargados) await _cargarPromedios(listaPorAutor.map((c) => c.id).toList());
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(value: 'A_to_Z', child: Text('A → Z')),
-                            const PopupMenuItem(value: 'Z_to_A', child: Text('Z → A')),
-                            const PopupMenuItem(value: 'relevancia', child: Text('Relevancia')),
-                            const PopupMenuItem(value: 'mas_reciente', child: Text('Más reciente')),
-                            const PopupMenuItem(value: 'mas_antigua', child: Text('Más antigua')),
-                          ],
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: tema.colorScheme.surface,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.sort_outlined),
-                                const SizedBox(width: 8),
-                                Text('Orden'),
-                              ],
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+
+                  final todasCapsulas = snapshot.data ?? [];
+
+                  final capsulasFiltradas = todasCapsulas.where((c) {
+                    if (!_esAdmin && c.esBorrador) return false;
+                    if (configuracion.modoNinosActivado && c.segmento != 'niños') return false;
+                    return true;
+                  }).toList();
+
+                  final listaPorAutor = (_autorFiltro == null || _autorFiltro == 'Todos')
+                      ? capsulasFiltradas
+                      : capsulasFiltradas.where((c) => c.autor == _autorFiltro).toList();
+
+                  final autoresSet = <String>{};
+                  for (final c in todasCapsulas) {
+                    if ((c.autor).isNotEmpty) autoresSet.add(c.autor);
+                  }
+                  final autores = ['Todos', ...autoresSet];
+
+                  void ordenarLista(List<Capsula> lista) {
+                    switch (_ordenSeleccionado) {
+                      case 'A_to_Z':
+                        lista.sort((a, b) => a.titulo.toLowerCase().compareTo(b.titulo.toLowerCase()));
+                        break;
+                      case 'Z_to_A':
+                        lista.sort((a, b) => b.titulo.toLowerCase().compareTo(a.titulo.toLowerCase()));
+                        break;
+                      case 'relevancia':
+                        lista.sort((a, b) {
+                          final pa = _promedios[a.id] ?? 0.0;
+                          final pb = _promedios[b.id] ?? 0.0;
+                          return pb.compareTo(pa);
+                        });
+                        break;
+                      case 'mas_reciente':
+                        lista.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                        break;
+                      case 'mas_antigua':
+                        lista.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+                        break;
+                    }
+                  }
+
+                  if (capsulasFiltradas.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No hay cápsulas disponibles por el momento.',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Flexible(
+                            fit: FlexFit.loose,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: PopupMenuButton<String>(
+                                initialValue: _ordenSeleccionado,
+                                onSelected: (val) async {
+                                  setState(() => _ordenSeleccionado = val);
+                                  await _guardarOrdenSeleccionado(val);
+                                  if (val == 'relevancia') {
+                                    if (!_promediosCargados) await _cargarPromedios(listaPorAutor.map((c) => c.id).toList());
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(value: 'A_to_Z', child: Text('A → Z')),
+                                  const PopupMenuItem(value: 'Z_to_A', child: Text('Z → A')),
+                                  const PopupMenuItem(value: 'relevancia', child: Text('Relevancia')),
+                                  const PopupMenuItem(value: 'mas_reciente', child: Text('Más reciente')),
+                                  const PopupMenuItem(value: 'mas_antigua', child: Text('Más antigua')),
+                                ],
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: tema.colorScheme.surface,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.sort_outlined),
+                                      const SizedBox(width: 8),
+                                      Text('Orden'),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Text('Autores:', style: tema.textTheme.bodyMedium),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 12),
                           Expanded(
-                            child: DropdownButton<String>(
-                              isExpanded: true,
-                              value: _autorFiltro ?? 'Todos',
-                              items: autores.map((a) => DropdownMenuItem(value: a, child: Text(a))).toList(),
-                              onChanged: (val) => setState(() => _autorFiltro = val),
+                            child: Row(
+                              children: [
+                                Text('Autores:', style: tema.textTheme.bodyMedium),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: DropdownButton<String>(
+                                    isExpanded: true,
+                                    value: _autorFiltro ?? 'Todos',
+                                    items: autores.map((a) => DropdownMenuItem(value: a, child: Text(a))).toList(),
+                                    onChanged: (val) => setState(() => _autorFiltro = val),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: _ordenSeleccionado == 'relevancia'
-                      ? FutureBuilder<void>(
-                          future: !_promediosCargados
-                              ? _cargarPromedios(listaPorAutor.map((c) => c.id).toList())
-                              : Future.value(),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting || _estaCargandoPromedios) {
-                              return const Center(child: CircularProgressIndicator());
-                            }
-                            final listaParaOrdenar = List<Capsula>.from(listaPorAutor);
-                            ordenarLista(listaParaOrdenar);
-                            return _buildListaOrdenada(listaParaOrdenar, favController);
-                          },
-                        )
-                      : () {
-                          final listaParaOrdenar = List<Capsula>.from(listaPorAutor);
-                          ordenarLista(listaParaOrdenar);
-                          return _buildListaOrdenada(listaParaOrdenar, favController);
-                        }(),
-                ),
-              ],
-            );
-          },
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: _ordenSeleccionado == 'relevancia'
+                            ? FutureBuilder<void>(
+                                future: !_promediosCargados
+                                    ? _cargarPromedios(listaPorAutor.map((c) => c.id).toList())
+                                    : Future.value(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState == ConnectionState.waiting || _estaCargandoPromedios) {
+                                    return const Center(child: CircularProgressIndicator());
+                                  }
+                                  final listaParaOrdenar = List<Capsula>.from(listaPorAutor);
+                                  ordenarLista(listaParaOrdenar);
+                                  return _buildListaOrdenada(listaParaOrdenar, favController);
+                                },
+                              )
+                            : () {
+                                final listaParaOrdenar = List<Capsula>.from(listaPorAutor);
+                                ordenarLista(listaParaOrdenar);
+                                return _buildListaOrdenada(listaParaOrdenar, favController);
+                              }(),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
       floatingActionButton: (_esAdmin || _esAutor)
@@ -339,6 +371,7 @@ class _CorazonToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final offline = context.select<FavoritosController, bool>((c) => c.isOffline);
     return Selector<FavoritosController, bool>(
       selector: (_, favCtrl) => favCtrl.isFavorite(capsula.id),
       builder: (context, esFavorita, _) {
@@ -348,11 +381,17 @@ class _CorazonToggle extends StatelessWidget {
           esFavorita: esFavorita,
           onToggleFavorito: () {
             final ctx = context;
+            if (offline) {
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                const SnackBar(content: Text('Sin conexión. Conéctate a internet para continuar.')),
+              );
+              return;
+            }
             // Cambio local inmediato (optimistic UI)
             favController.toggleLocal(capsula.id);
 
             // Persistencia en background sin esperar
-            favController.persistirToggle(capsula.id, esFavorita: esFavorita).catchError((e) {
+            favController.persistirToggle(capsula.id).catchError((e) {
               // ignore: use_build_context_synchronously
               ScaffoldMessenger.of(ctx).showSnackBar(
                 SnackBar(content: Text('Error al actualizar: $e')),

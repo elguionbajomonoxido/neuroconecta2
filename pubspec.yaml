@@ -52,6 +52,7 @@ dependencies:
   url_launcher: ^6.3.0
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.5.3
+  connectivity_plus: ^6.1.0
   image_picker: ^1.2.1
   firebase_storage: ^13.0.4
   video_player: ^2.10.1

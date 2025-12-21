@@ -128,9 +128,15 @@ class _PantallaFavoritosState extends State<PantallaFavoritos> {
 
   Future<void> _sincronizarFavoritos() async {
     if (_sincronizandoFavoritos) return;
+    final favController = Provider.of<FavoritosController>(context, listen: false);
+    if (favController.isOffline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sin conexión. Conéctate a internet para continuar.')),
+      );
+      return;
+    }
     setState(() => _sincronizandoFavoritos = true);
     try {
-      final favController = Provider.of<FavoritosController>(context, listen: false);
       await favController.syncFromFirestore();
     } catch (e) {
       if (mounted) {
@@ -152,6 +158,7 @@ class _PantallaFavoritosState extends State<PantallaFavoritos> {
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
     final favController = Provider.of<FavoritosController>(context, listen: false);
+    final offline = context.select<FavoritosController, bool>((c) => c.isOffline);
 
     return Scaffold(
       appBar: AppBar(
@@ -179,172 +186,195 @@ class _PantallaFavoritosState extends State<PantallaFavoritos> {
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: StreamBuilder<List<Capsula>>(
-          stream: _servicioFirestore.obtenerCapsulas(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (snapshot.hasError) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
-                    const SizedBox(height: 16),
-                    Text('Error: ${snapshot.error}'),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => setState(() {}),
-                      child: const Text('Reintentar'),
-                    ),
+        child: Column(
+          children: [
+            if (offline)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(top: 8, bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.wifi_off, color: Colors.orange),
+                    SizedBox(width: 8),
+                    Expanded(child: Text('Sin conexión. Conéctate a internet para continuar.')),
                   ],
                 ),
-              );
-            }
+              ),
+            Expanded(
+              child: StreamBuilder<List<Capsula>>(
+                stream: _servicioFirestore.obtenerCapsulas(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-            final todasCapsulas = snapshot.data ?? [];
-            
-            // Filtrar solo cápsulas favoritas según el controller
-            final capsulasFavoritas = todasCapsulas
-                .where((capsula) => favController.isFavorite(capsula.id))
-                .toList();
-
-            // Ordenar
-            switch (_ordenSeleccionado) {
-              case 'Z_to_A':
-                capsulasFavoritas.sort((a, b) => b.titulo.compareTo(a.titulo));
-                break;
-              case 'relevancia':
-                capsulasFavoritas.sort((a, b) {
-                  final pa = _promedios[a.id] ?? 0.0;
-                  final pb = _promedios[b.id] ?? 0.0;
-                  return pb.compareTo(pa);
-                });
-                break;
-              case 'mas_reciente':
-                capsulasFavoritas.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-                break;
-              case 'mas_antigua':
-                capsulasFavoritas.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-                break;
-              case 'A_to_Z':
-              default:
-                capsulasFavoritas.sort((a, b) => a.titulo.compareTo(b.titulo));
-                break;
-            }
-
-            // Si no hay favoritos
-            if (capsulasFavoritas.isEmpty) {
-              return RefreshIndicator(
-                onRefresh: _sincronizarFavoritos,
-                child: ListView(
-                  children: [
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.5,
+                  if (snapshot.hasError) {
+                    return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.favorite_border, size: 64, color: Colors.grey.shade400),
-                          const SizedBox(height: 24),
-                          Text(
-                            'Aún no tienes favoritos',
-                            style: tema.textTheme.titleLarge?.copyWith(
-                              color: Colors.grey.shade600,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Marca tus cápsulas favoritas desde el Inicio',
-                            style: tema.textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey.shade500,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 32),
-                          ElevatedButton.icon(
-                            onPressed: () => context.pop(),
-                            icon: const Icon(Icons.home),
-                            label: const Text('Ir al Inicio'),
+                          Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+                          const SizedBox(height: 16),
+                          Text('Error: ${snapshot.error}'),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () => setState(() {}),
+                            child: const Text('Reintentar'),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }
+                    );
+                  }
 
-            // Con favoritos: mostrar lista con RefreshIndicator
-            return Column(
-              children: [
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Flexible(
-                      fit: FlexFit.loose,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: PopupMenuButton<String>(
-                          initialValue: _ordenSeleccionado,
-                          onSelected: (val) async {
-                            setState(() => _ordenSeleccionado = val);
-                            await _guardarOrdenSeleccionado(val);
-                            if (val == 'relevancia' && !_promediosCargados) {
-                              await _cargarPromedios(capsulasFavoritas.map((c) => c.id).toList());
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(value: 'A_to_Z', child: Text('A → Z')),
-                            const PopupMenuItem(value: 'Z_to_A', child: Text('Z → A')),
-                            const PopupMenuItem(value: 'relevancia', child: Text('Relevancia')),
-                            const PopupMenuItem(value: 'mas_reciente', child: Text('Más reciente')),
-                            const PopupMenuItem(value: 'mas_antigua', child: Text('Más antigua')),
-                          ],
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade300),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                  final todasCapsulas = snapshot.data ?? [];
+                  
+                  // Filtrar solo cápsulas favoritas según el controller
+                  final capsulasFavoritas = todasCapsulas
+                      .where((capsula) => favController.isFavorite(capsula.id))
+                      .toList();
+
+                  // Ordenar
+                  switch (_ordenSeleccionado) {
+                    case 'Z_to_A':
+                      capsulasFavoritas.sort((a, b) => b.titulo.compareTo(a.titulo));
+                      break;
+                    case 'relevancia':
+                      capsulasFavoritas.sort((a, b) {
+                        final pa = _promedios[a.id] ?? 0.0;
+                        final pb = _promedios[b.id] ?? 0.0;
+                        return pb.compareTo(pa);
+                      });
+                      break;
+                    case 'mas_reciente':
+                      capsulasFavoritas.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                      break;
+                    case 'mas_antigua':
+                      capsulasFavoritas.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+                      break;
+                    case 'A_to_Z':
+                    default:
+                      capsulasFavoritas.sort((a, b) => a.titulo.compareTo(b.titulo));
+                      break;
+                  }
+
+                  // Si no hay favoritos
+                  if (capsulasFavoritas.isEmpty) {
+                    return RefreshIndicator(
+                      onRefresh: _sincronizarFavoritos,
+                      child: ListView(
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.5,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.sort, color: tema.colorScheme.primary, size: 20),
-                                const SizedBox(width: 4),
-                                const Text('Orden'),
+                                Icon(Icons.favorite_border, size: 64, color: Colors.grey.shade400),
+                                const SizedBox(height: 24),
+                                Text(
+                                  'Aún no tienes favoritos',
+                                  style: tema.textTheme.titleLarge?.copyWith(
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Marca tus cápsulas favoritas desde el Inicio',
+                                  style: tema.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.grey.shade500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 32),
+                                ElevatedButton.icon(
+                                  onPressed: () => context.pop(),
+                                  icon: const Icon(Icons.home),
+                                  label: const Text('Ir al Inicio'),
+                                ),
                               ],
                             ),
                           ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // Con favoritos: mostrar lista con RefreshIndicator
+                  return Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Flexible(
+                            fit: FlexFit.loose,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: PopupMenuButton<String>(
+                                initialValue: _ordenSeleccionado,
+                                onSelected: (val) async {
+                                  setState(() => _ordenSeleccionado = val);
+                                  await _guardarOrdenSeleccionado(val);
+                                  if (val == 'relevancia' && !_promediosCargados) {
+                                    await _cargarPromedios(capsulasFavoritas.map((c) => c.id).toList());
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(value: 'A_to_Z', child: Text('A → Z')),
+                                  const PopupMenuItem(value: 'Z_to_A', child: Text('Z → A')),
+                                  const PopupMenuItem(value: 'relevancia', child: Text('Relevancia')),
+                                  const PopupMenuItem(value: 'mas_reciente', child: Text('Más reciente')),
+                                  const PopupMenuItem(value: 'mas_antigua', child: Text('Más antigua')),
+                                ],
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.sort, color: tema.colorScheme.primary, size: 20),
+                                      const SizedBox(width: 4),
+                                      const Text('Orden'),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: _sincronizarFavoritos,
+                          child: _ordenSeleccionado == 'relevancia'
+                              ? FutureBuilder<void>(
+                                  future: !_promediosCargados
+                                      ? _cargarPromedios(capsulasFavoritas.map((c) => c.id).toList())
+                                      : Future.value(),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState == ConnectionState.waiting || _estaCargandoPromedios) {
+                                      return const Center(child: CircularProgressIndicator());
+                                    }
+                                    return _buildListaOrdenada(capsulasFavoritas, favController);
+                                  },
+                                )
+                              : _buildListaOrdenada(capsulasFavoritas, favController),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _sincronizarFavoritos,
-                    child: _ordenSeleccionado == 'relevancia'
-                        ? FutureBuilder<void>(
-                            future: !_promediosCargados
-                                ? _cargarPromedios(capsulasFavoritas.map((c) => c.id).toList())
-                                : Future.value(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting || _estaCargandoPromedios) {
-                                return const Center(child: CircularProgressIndicator());
-                              }
-                              return _buildListaOrdenada(capsulasFavoritas, favController);
-                            },
-                          )
-                        : _buildListaOrdenada(capsulasFavoritas, favController),
-                  ),
-                ),
-              ],
-            );
-          },
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
       floatingActionButton: (_esAdmin || _esAutor)
@@ -384,11 +414,17 @@ class _CorazonToggle extends StatelessWidget {
           esFavorita: esFavorita,
           onToggleFavorito: () {
             final ctx = context;
+            if (favController.isOffline) {
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                const SnackBar(content: Text('Sin conexión. Conéctate a internet para continuar.')),
+              );
+              return;
+            }
             // Cambio local inmediato (optimistic UI)
             favController.toggleLocal(capsula.id);
 
             // Persistencia en background sin esperar
-            favController.persistirToggle(capsula.id, esFavorita: esFavorita).catchError((e) {
+            favController.persistirToggle(capsula.id).catchError((e) {
               // ignore: use_build_context_synchronously
               ScaffoldMessenger.of(ctx).showSnackBar(
                 SnackBar(content: Text('Error al actualizar: $e')),

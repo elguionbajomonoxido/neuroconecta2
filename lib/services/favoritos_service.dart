@@ -8,15 +8,12 @@ class FavoritosService {
 
   late final Stream<Set<String>> _favoritosStream = _createFavoritosStream();
 
-  /// Retorna un Stream que emite el Set de IDs de cápsulas favoritas del usuario actual
+  /// Stream con el Set de IDs de cápsulas favoritas del usuario actual
   Stream<Set<String>> streamFavoritosIds() => _favoritosStream;
 
-  /// Crea el stream de favoritos con manejo de errores
   Stream<Set<String>> _createFavoritosStream() {
     return _auth.authStateChanges().asyncExpand((user) {
-      if (user == null) {
-        return Stream.value(<String>{});
-      }
+      if (user == null) return Stream.value(<String>{});
 
       final uid = user.uid;
       return _db
@@ -24,18 +21,12 @@ class FavoritosService {
           .doc(uid)
           .collection('favoritos')
           .snapshots()
-          .map((snapshot) {
-            try {
-              return snapshot.docs.map((doc) => doc.id).toSet();
-            } catch (_) {
-              return <String>{};
-            }
-          })
-          .handleError((_) => <String>{});
+          .map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet())
+          .handleError((_) {});
     });
   }
 
-  /// Obtiene los favoritos una sola vez (útil para debug o inicialización)
+  /// Obtiene los favoritos una sola vez
   Future<Set<String>> obtenerFavoritosUnaVez() async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Usuario no autenticado');
@@ -49,23 +40,29 @@ class FavoritosService {
     return snapshot.docs.map((doc) => doc.id).toSet();
   }
 
-  /// Agrega una cápsula a favoritos
+  /// Agrega favorito SIN provocar update/overwrite (idempotente)
   Future<void> agregarFavorito(String capsulaId) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Usuario no autenticado');
 
-    await _db
+    final ref = _db
         .collection('usuarios')
         .doc(user.uid)
         .collection('favoritos')
-        .doc(capsulaId)
-        .set({
-      'capsulaId': capsulaId,
-      'createdAt': FieldValue.serverTimestamp(),
+        .doc(capsulaId);
+
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (snap.exists) return; // ya existe, no tocar createdAt
+
+      tx.set(ref, {
+        'capsulaId': capsulaId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 
-  /// Quita una cápsula de favoritos
+  /// Quita favorito
   Future<void> quitarFavorito(String capsulaId) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Usuario no autenticado');
@@ -78,13 +75,29 @@ class FavoritosService {
         .delete();
   }
 
-  /// Alterna el estado de favorito (agrega si no está, quita si está)
-  Future<void> alternarFavorito(String capsulaId, {required bool esFavorita}) async {
-    if (esFavorita) {
-      await quitarFavorito(capsulaId);
-    } else {
-      await agregarFavorito(capsulaId);
-    }
+  /// Alterna favorito de forma segura (NO depende del bool externo)
+  Future<void> alternarFavorito(String capsulaId) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Usuario no autenticado');
+
+    final ref = _db
+        .collection('usuarios')
+        .doc(user.uid)
+        .collection('favoritos')
+        .doc(capsulaId);
+
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+
+      if (snap.exists) {
+        tx.delete(ref);
+      } else {
+        tx.set(ref, {
+          'capsulaId': capsulaId,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+    });
   }
 
   /// Verifica si una cápsula es favorita
