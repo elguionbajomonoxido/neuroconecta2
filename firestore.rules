@@ -4,57 +4,73 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isAdmin() {
       return isSignedIn() && (
-        // Prefer custom claim 'admin' if you set it
         (request.auth.token.admin == true)
-        // Fallback: check usuarios collection
-        || (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
-            get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin')
+        || (
+          exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin'
+        )
       );
     }
+
     // CAPSULAS
     match /capsulas/{capsId} {
       allow read: if true;
+
       allow create: if isSignedIn()
         && request.resource.data.creadoPorUid == request.auth.uid
         && request.resource.data.titulo is string;
+
       allow update, delete: if isAdmin()
-        || (isSignedIn()
-            && resource.data.creadoPorUid == request.auth.uid
-            && request.resource.data.creadoPorUid == resource.data.creadoPorUid);
+        || (
+          isSignedIn()
+          && resource.data.creadoPorUid == request.auth.uid
+          && request.resource.data.creadoPorUid == resource.data.creadoPorUid
+        );
     }
 
     // RETROALIMENTACIONES
-    // Recomendación: usar ID = "${capsulaId}_${uid}" para forzar una sola por usuario
     match /retroalimentaciones/{fbId} {
       allow read: if true;
+
       allow create: if isSignedIn()
         && request.resource.data.usuarioUid == request.auth.uid
         && request.resource.data.capsulaId is string
         && request.resource.data.estrellas is int
         && request.resource.data.estrellas >= 1
         && request.resource.data.estrellas <= 5
-        // Si se usa ID compuesto, fuerza unicidad en el ID
         && fbId == (request.resource.data.capsulaId + '_' + request.auth.uid);
+
       allow update, delete: if (isSignedIn() && resource.data.usuarioUid == request.auth.uid) || isAdmin();
     }
 
-    // CONFIG - groserias (solo admins escriben)
-    match /config/groserias {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // GUIAS - Editor interactivo de guías (solo admins escriben, todos leen)
-    match /guias/{guiaId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin();
-    }
-
-    // USUARIOS
+    // USUARIOS y FAVORITOS
     match /usuarios/{uid} {
       allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
-      allow update: if isSignedIn() && (request.auth.uid == uid || isAdmin());
       allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+
+      match /favoritos/{capsulaId} {
+        // Leer/Escribir solo el propietario (o admin)
+        allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+
+        // Crear o actualizar (set/merge) favorito
+        allow create, update: if isSignedIn()
+          && request.auth.uid == uid
+          && request.resource.data.capsulaId == capsulaId
+          && request.resource.data.capsulaId is string
+          && (
+            !request.resource.data.keys().hasAny(['createdAt'])
+            || request.resource.data.createdAt is timestamp
+          );
+
+        // Eliminar favorito
+        allow delete: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      }
+    }
+
+    // Denegar por defecto
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

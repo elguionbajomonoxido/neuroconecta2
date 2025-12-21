@@ -10,6 +10,7 @@ import '../screens/crea_capsula_screen.dart';
 import '../screens/edita_capsula_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/editar_groserias_screen.dart';
+import '../screens/favoritos_screen.dart';
 import '../screens/guia_funcionalidades_screen.dart';
 import '../screens/guia_autores_screen.dart';
 import '../screens/panel_admin_guias_screen.dart';
@@ -33,6 +34,7 @@ class RutasAplicacion {
   static const String editarGuia = '/configuracion/editar-guia';
   static const String detallesGuia = '/detalles-guia';
   static const String editarGuiaDetalle = '/editar-guia';
+  static const String favoritos = '/favoritos';
 
   // Flag para permitir navegación al login durante el cierre de sesión
   static bool isLoggingOut = false;
@@ -56,6 +58,10 @@ class RutasAplicacion {
       GoRoute(
         path: inicio,
         builder: (context, state) => const PaginaInicio(),
+      ),
+      GoRoute(
+        path: favoritos,
+        builder: (context, state) => const PantallaFavoritos(),
       ),
       GoRoute(
         path: configuracion,

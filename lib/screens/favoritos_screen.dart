@@ -1,36 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../routes/app_routes.dart';
 import '../models/capsula.dart';
 import '../services/firestore_service.dart';
 import '../services/feedback_service.dart';
 import '../widgets/capsula_card.dart';
-import '../controllers/settings_controller.dart';
 import '../controllers/favoritos_controller.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-class PaginaInicio extends StatefulWidget {
-  const PaginaInicio({super.key});
+class PantallaFavoritos extends StatefulWidget {
+  const PantallaFavoritos({super.key});
 
   @override
-  State<PaginaInicio> createState() => _PaginaInicioState();
+  State<PantallaFavoritos> createState() => _PantallaFavoritosState();
 }
 
-class _PaginaInicioState extends State<PaginaInicio> {
+class _PantallaFavoritosState extends State<PantallaFavoritos> {
   final ServicioFirestore _servicioFirestore = ServicioFirestore();
   final ServicioRetroalimentacion _servicioRetro = ServicioRetroalimentacion();
-  final User? _usuarioActual = FirebaseAuth.instance.currentUser;
 
   bool _esAdmin = false;
   bool _esAutor = false;
   String _ordenSeleccionado = 'A_to_Z';
-  String? _autorFiltro;
   Map<String, double> _promedios = {};
   bool _estaCargandoPromedios = false;
   bool _promediosCargados = false;
-  static const String _prefsKeyOrden = 'home_orden_seleccion';
+  bool _sincronizandoFavoritos = false;
+  static const String _prefsKeyOrden = 'favoritos_orden_seleccion';
 
   Future<void> _guardarOrdenSeleccionado(String orden) async {
     try {
@@ -88,47 +86,72 @@ class _PaginaInicioState extends State<PaginaInicio> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _verificarRol();
-    _cargarOrdenGuardado();
+  Future<void> _verificarRoles() async {
+    try {
+      final esAdmin = await _servicioFirestore.esAdmin();
+      final esAutor = await _servicioFirestore.esAutor();
+
+      if (mounted) {
+        setState(() {
+          _esAdmin = esAdmin;
+          _esAutor = esAutor;
+        });
+      }
+    } catch (_) {}
   }
 
   Widget _buildListaOrdenada(List<Capsula> lista, FavoritosController favController) {
     return ListView.builder(
       padding: const EdgeInsets.only(top: 16, bottom: 80),
       itemCount: lista.length,
-      key: ValueKey('lista_capsulas_${lista.length}'),
       itemBuilder: (context, index) {
         final capsula = lista[index];
         return _CorazonToggle(
           capsula: capsula,
           favController: favController,
-          onCardTap: () {
-            context.push('${RutasAplicacion.detalleCapsula}/${capsula.id}');
-          },
+          onCardTap: () {},
         );
       },
     );
   }
 
-  Future<void> _verificarRol() async {
-    final esAdmin = await _servicioFirestore.esAdmin();
-    final esAutor = await _servicioFirestore.esAutor();
-    if (mounted) {
-      setState(() {
-        _esAdmin = esAdmin;
-        _esAutor = esAutor;
-      });
+  @override
+  void initState() {
+    super.initState();
+    _verificarRoles();
+    _cargarOrdenGuardado();
+    // Sincronizar favoritos desde Firestore al abrir la pantalla
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sincronizarFavoritos();
+    });
+  }
+
+  Future<void> _sincronizarFavoritos() async {
+    if (_sincronizandoFavoritos) return;
+    setState(() => _sincronizandoFavoritos = true);
+    try {
+      final favController = Provider.of<FavoritosController>(context, listen: false);
+      await favController.syncFromFirestore();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al sincronizar: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sincronizandoFavoritos = false);
     }
   }
 
   @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final configuracion = Provider.of<ControladorConfiguracion>(context);
-    final favController = Provider.of<FavoritosController>(context, listen: false);
     final tema = Theme.of(context);
+    final favController = Provider.of<FavoritosController>(context, listen: false);
 
     return Scaffold(
       appBar: AppBar(
@@ -138,21 +161,16 @@ class _PaginaInicioState extends State<PaginaInicio> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Hola, ${_usuarioActual?.displayName?.split(' ')[0] ?? 'Usuario'}',
+              'Mis Favoritos',
               style: tema.textTheme.titleLarge,
             ),
             Text(
-              'Explora tus cápsulas',
+              'Tus cápsulas guardadas',
               style: tema.textTheme.bodyMedium,
             ),
           ],
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.favorite, color: Colors.red),
-            onPressed: () => context.push(RutasAplicacion.favoritos),
-            tooltip: 'Ver Favoritos',
-          ),
           IconButton(
             icon: Icon(Icons.settings, color: tema.colorScheme.primary),
             onPressed: () => context.push(RutasAplicacion.configuracion),
@@ -169,60 +187,97 @@ class _PaginaInicioState extends State<PaginaInicio> {
             }
 
             if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            }
-
-            final todasCapsulas = snapshot.data ?? [];
-
-            final capsulasFiltradas = todasCapsulas.where((c) {
-              if (!_esAdmin && c.esBorrador) return false;
-              if (configuracion.modoNinosActivado && c.segmento != 'niños') return false;
-              return true;
-            }).toList();
-
-            final listaPorAutor = (_autorFiltro == null || _autorFiltro == 'Todos')
-                ? capsulasFiltradas
-                : capsulasFiltradas.where((c) => c.autor == _autorFiltro).toList();
-
-            final autoresSet = <String>{};
-            for (final c in todasCapsulas) {
-              if ((c.autor).isNotEmpty) autoresSet.add(c.autor);
-            }
-            final autores = ['Todos', ...autoresSet];
-
-            void ordenarLista(List<Capsula> lista) {
-              switch (_ordenSeleccionado) {
-                case 'A_to_Z':
-                  lista.sort((a, b) => a.titulo.toLowerCase().compareTo(b.titulo.toLowerCase()));
-                  break;
-                case 'Z_to_A':
-                  lista.sort((a, b) => b.titulo.toLowerCase().compareTo(a.titulo.toLowerCase()));
-                  break;
-                case 'relevancia':
-                  lista.sort((a, b) {
-                    final pa = _promedios[a.id] ?? 0.0;
-                    final pb = _promedios[b.id] ?? 0.0;
-                    return pb.compareTo(pa);
-                  });
-                  break;
-                case 'mas_reciente':
-                  lista.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-                  break;
-                case 'mas_antigua':
-                  lista.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-                  break;
-              }
-            }
-
-            if (capsulasFiltradas.isEmpty) {
-              return const Center(
-                child: Text(
-                  'No hay cápsulas disponibles por el momento.',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+                    const SizedBox(height: 16),
+                    Text('Error: ${snapshot.error}'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => setState(() {}),
+                      child: const Text('Reintentar'),
+                    ),
+                  ],
                 ),
               );
             }
 
+            final todasCapsulas = snapshot.data ?? [];
+            
+            // Filtrar solo cápsulas favoritas según el controller
+            final capsulasFavoritas = todasCapsulas
+                .where((capsula) => favController.isFavorite(capsula.id))
+                .toList();
+
+            // Ordenar
+            switch (_ordenSeleccionado) {
+              case 'Z_to_A':
+                capsulasFavoritas.sort((a, b) => b.titulo.compareTo(a.titulo));
+                break;
+              case 'relevancia':
+                capsulasFavoritas.sort((a, b) {
+                  final pa = _promedios[a.id] ?? 0.0;
+                  final pb = _promedios[b.id] ?? 0.0;
+                  return pb.compareTo(pa);
+                });
+                break;
+              case 'mas_reciente':
+                capsulasFavoritas.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                break;
+              case 'mas_antigua':
+                capsulasFavoritas.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+                break;
+              case 'A_to_Z':
+              default:
+                capsulasFavoritas.sort((a, b) => a.titulo.compareTo(b.titulo));
+                break;
+            }
+
+            // Si no hay favoritos
+            if (capsulasFavoritas.isEmpty) {
+              return RefreshIndicator(
+                onRefresh: _sincronizarFavoritos,
+                child: ListView(
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.5,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.favorite_border, size: 64, color: Colors.grey.shade400),
+                          const SizedBox(height: 24),
+                          Text(
+                            'Aún no tienes favoritos',
+                            style: tema.textTheme.titleLarge?.copyWith(
+                              color: Colors.grey.shade600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Marca tus cápsulas favoritas desde el Inicio',
+                            style: tema.textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey.shade500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 32),
+                          ElevatedButton.icon(
+                            onPressed: () => context.pop(),
+                            icon: const Icon(Icons.home),
+                            label: const Text('Ir al Inicio'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // Con favoritos: mostrar lista con RefreshIndicator
             return Column(
               children: [
                 const SizedBox(height: 8),
@@ -237,8 +292,8 @@ class _PaginaInicioState extends State<PaginaInicio> {
                           onSelected: (val) async {
                             setState(() => _ordenSeleccionado = val);
                             await _guardarOrdenSeleccionado(val);
-                            if (val == 'relevancia') {
-                              if (!_promediosCargados) await _cargarPromedios(listaPorAutor.map((c) => c.id).toList());
+                            if (val == 'relevancia' && !_promediosCargados) {
+                              await _cargarPromedios(capsulasFavoritas.map((c) => c.id).toList());
                             }
                           },
                           itemBuilder: (context) => [
@@ -251,60 +306,41 @@ class _PaginaInicioState extends State<PaginaInicio> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color: tema.colorScheme.surface,
+                              border: Border.all(color: Colors.grey.shade300),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.sort_outlined),
-                                const SizedBox(width: 8),
-                                Text('Orden'),
+                                Icon(Icons.sort, color: tema.colorScheme.primary, size: 20),
+                                const SizedBox(width: 4),
+                                const Text('Orden'),
                               ],
                             ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Text('Autores:', style: tema.textTheme.bodyMedium),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: DropdownButton<String>(
-                              isExpanded: true,
-                              value: _autorFiltro ?? 'Todos',
-                              items: autores.map((a) => DropdownMenuItem(value: a, child: Text(a))).toList(),
-                              onChanged: (val) => setState(() => _autorFiltro = val),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 Expanded(
-                  child: _ordenSeleccionado == 'relevancia'
-                      ? FutureBuilder<void>(
-                          future: !_promediosCargados
-                              ? _cargarPromedios(listaPorAutor.map((c) => c.id).toList())
-                              : Future.value(),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting || _estaCargandoPromedios) {
-                              return const Center(child: CircularProgressIndicator());
-                            }
-                            final listaParaOrdenar = List<Capsula>.from(listaPorAutor);
-                            ordenarLista(listaParaOrdenar);
-                            return _buildListaOrdenada(listaParaOrdenar, favController);
-                          },
-                        )
-                      : () {
-                          final listaParaOrdenar = List<Capsula>.from(listaPorAutor);
-                          ordenarLista(listaParaOrdenar);
-                          return _buildListaOrdenada(listaParaOrdenar, favController);
-                        }(),
+                  child: RefreshIndicator(
+                    onRefresh: _sincronizarFavoritos,
+                    child: _ordenSeleccionado == 'relevancia'
+                        ? FutureBuilder<void>(
+                            future: !_promediosCargados
+                                ? _cargarPromedios(capsulasFavoritas.map((c) => c.id).toList())
+                                : Future.value(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting || _estaCargandoPromedios) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+                              return _buildListaOrdenada(capsulasFavoritas, favController);
+                            },
+                          )
+                        : _buildListaOrdenada(capsulasFavoritas, favController),
+                  ),
                 ),
               ],
             );
@@ -366,4 +402,3 @@ class _CorazonToggle extends StatelessWidget {
     );
   }
 }
-

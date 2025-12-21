@@ -5,8 +5,15 @@ import '../models/capsula.dart';
 
 class TarjetaCapsula extends StatelessWidget {
   final Capsula capsula;
+  final bool esFavorita;
+  final VoidCallback? onToggleFavorito;
 
-  const TarjetaCapsula({super.key, required this.capsula});
+  const TarjetaCapsula({
+    super.key,
+    required this.capsula,
+    this.esFavorita = false,
+    this.onToggleFavorito,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +84,20 @@ class TarjetaCapsula extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (onToggleFavorito != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: IconButton(
+                        icon: Icon(
+                          esFavorita ? Icons.favorite : Icons.favorite_border,
+                          color: esFavorita ? Colors.red : Colors.grey,
+                          size: 24,
+                        ),
+                        onPressed: onToggleFavorito,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 12),

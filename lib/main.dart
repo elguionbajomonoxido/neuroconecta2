@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'app.dart';
 import 'firebase_options.dart';
 import 'controllers/settings_controller.dart';
+import 'controllers/favoritos_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,8 +19,11 @@ void main() async {
   await settingsController.cargarConfiguracion();
 
   runApp(
-    ChangeNotifierProvider.value(
-      value: settingsController,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: settingsController),
+        ChangeNotifierProvider(create: (_) => FavoritosController()),
+      ],
       child: const AplicacionNeuroConecta(),
     ),
   );
