@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:neuroconecta2/models/guia.dart';
-import 'package:neuroconecta2/services/feedback_service.dart';
+import 'package:neuroconecta2/services/groserias_repository.dart';
 
 class GuiasFirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final GroseriasRepository _groseriasRepository = GroseriasRepository();
   Timer? _debounceTimer;
 
   /// Obtiene una guía por ID
@@ -22,10 +23,7 @@ class GuiasFirestoreService {
         .where('tipoGuia', isEqualTo: tipoGuia)
         .snapshots()
         .map((snapshot) {
-      final guias = snapshot.docs
-          .map((doc) => Guia.fromMap(doc.data(), doc.id))
-          .toList();
-      // Ordena localmente por createdAt descendente hasta que el índice esté listo
+      final guias = snapshot.docs.map((doc) => Guia.fromMap(doc.data(), doc.id)).toList();
       guias.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return guias;
     });
@@ -33,14 +31,8 @@ class GuiasFirestoreService {
 
   /// Obtiene todas las guías (para admin panel)
   Stream<List<Guia>> obtenerTodasLasGuias() {
-    return _db
-        .collection('guias')
-        .snapshots()
-        .map((snapshot) {
-      final guias = snapshot.docs
-          .map((doc) => Guia.fromMap(doc.data(), doc.id))
-          .toList();
-      // Ordena localmente por createdAt descendente hasta que el índice esté listo
+    return _db.collection('guias').snapshots().map((snapshot) {
+      final guias = snapshot.docs.map((doc) => Guia.fromMap(doc.data(), doc.id)).toList();
       guias.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return guias;
     });
@@ -61,7 +53,6 @@ class GuiasFirestoreService {
         'titulo': titulo,
         'tipoGuia': tipoGuia,
         'bloques': bloques.map((b) => b.toMap()).toList(),
-        // campos legacy para compatibilidad
         'contenidoMarkdown': legacy['contenidoMarkdown'],
         'imagenes': legacy['imagenes'],
         'createdAt': FieldValue.serverTimestamp(),
@@ -91,8 +82,7 @@ class GuiasFirestoreService {
       if (tipoGuia != null) datosActualizar['tipoGuia'] = tipoGuia;
       if (bloques != null) {
         await _validarGroserias(bloques);
-        datosActualizar['bloques'] =
-            bloques.map((b) => b.toMap()).toList();
+        datosActualizar['bloques'] = bloques.map((b) => b.toMap()).toList();
         final legacy = _legacyFromBloques(bloques);
         datosActualizar['contenidoMarkdown'] = legacy['contenidoMarkdown'];
         datosActualizar['imagenes'] = legacy['imagenes'];
@@ -137,36 +127,25 @@ class GuiasFirestoreService {
 
   Future<void> _validarGroserias(List<BloqueGuia> bloques) async {
     try {
-      final servicioRetro = ServicioRetroalimentacion();
-      var malas = await servicioRetro.obtenerListaGroseriasFirestore();
-      if (malas.isEmpty) {
-        malas = ['puta', 'mierda', 'gilipollas', 'idiota', 'imbecil', 'cabron', 'pendejo'];
-      }
-      final textos = bloques
-          .where((b) => b.tipo == 'texto')
-          .map((b) => b.texto ?? '')
-          .join(' ');
+      final malas = await _groseriasRepository.obtenerLista();
+      final textos =
+          bloques.where((b) => b.tipo == 'texto').map((b) => b.texto ?? '').join(' ');
       for (final m in malas) {
         final p = m.toLowerCase().trim();
         if (p.isEmpty) continue;
-        final regex = RegExp(r'(^|\W)' + RegExp.escape(p) + r'($|\W)',
-            caseSensitive: false);
+        final regex = RegExp(r'(^|\W)' + RegExp.escape(p) + r'($|\W)', caseSensitive: false);
         if (regex.hasMatch(textos.toLowerCase())) {
           throw Exception('El contenido contiene palabras censuradas');
         }
       }
     } catch (_) {
-      // Si falla la validación remota, usamos lista por defecto y seguimos validando
-      final malas = ['puta', 'mierda', 'gilipollas', 'idiota', 'imbecil', 'cabron', 'pendejo'];
-      final textos = bloques
-          .where((b) => b.tipo == 'texto')
-          .map((b) => b.texto ?? '')
-          .join(' ');
+      final malas = _groseriasRepository.listaPorDefecto;
+      final textos =
+          bloques.where((b) => b.tipo == 'texto').map((b) => b.texto ?? '').join(' ');
       for (final m in malas) {
         final p = m.toLowerCase().trim();
         if (p.isEmpty) continue;
-        final regex = RegExp(r'(^|\W)' + RegExp.escape(p) + r'($|\W)',
-            caseSensitive: false);
+        final regex = RegExp(r'(^|\W)' + RegExp.escape(p) + r'($|\W)', caseSensitive: false);
         if (regex.hasMatch(textos.toLowerCase())) {
           throw Exception('El contenido contiene palabras censuradas');
         }
@@ -175,14 +154,12 @@ class GuiasFirestoreService {
   }
 
   Map<String, dynamic> _legacyFromBloques(List<BloqueGuia> bloques) {
-    final textoBlocks = bloques
-        .where((b) => b.tipo == 'texto' && (b.texto?.isNotEmpty ?? false))
-        .toList()
-      ..sort((a, b) => a.orden.compareTo(b.orden));
-    final imageBlocks = bloques
-        .where((b) => b.tipo == 'imagen' && (b.url?.isNotEmpty ?? false))
-        .toList()
-      ..sort((a, b) => a.orden.compareTo(b.orden));
+    final textoBlocks =
+        bloques.where((b) => b.tipo == 'texto' && (b.texto?.isNotEmpty ?? false)).toList()
+          ..sort((a, b) => a.orden.compareTo(b.orden));
+    final imageBlocks =
+        bloques.where((b) => b.tipo == 'imagen' && (b.url?.isNotEmpty ?? false)).toList()
+          ..sort((a, b) => a.orden.compareTo(b.orden));
 
     final legacyMarkdown = textoBlocks.map((b) => b.texto!).join('\n\n');
     final legacyImagenes = imageBlocks
