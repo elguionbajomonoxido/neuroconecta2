@@ -25,7 +25,7 @@ class _EditarGroseriasScreenState extends State<EditarGroseriasScreen> {
 
   Future<void> _load() async {
     try {
-      final lista = await _servicio.obtenerListaGroseriasFirestore();
+      final lista = await _servicio.obtenerListaGroserias();
       if (lista.isNotEmpty) {
         if (!mounted) return;
         _setControllersFromList(lista);
@@ -60,7 +60,7 @@ class _EditarGroseriasScreenState extends State<EditarGroseriasScreen> {
     final lista = _controllers.map((c) => c.text.trim()).where((e) => e.isNotEmpty).toList();
     setState(() => _guardando = true);
     try {
-      await _servicio.actualizarListaGroseriasFirestore(lista);
+      await _servicio.actualizarListaGroserias(lista);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lista guardada correctamente')));
       Navigator.pop(context);

@@ -54,7 +54,7 @@ class _PantallaCrearCapsulaState extends State<PantallaCrearCapsula> {
   Future<void> _cargarGroserias() async {
     try {
       final servicio = ServicioRetroalimentacion();
-      final desdeFs = await servicio.obtenerListaGroseriasFirestore();
+      final desdeFs = await servicio.obtenerListaGroserias();
       if (desdeFs.isNotEmpty) {
         _listaGroserias = desdeFs;
         return;
@@ -233,4 +233,3 @@ class _PantallaCrearCapsulaState extends State<PantallaCrearCapsula> {
     );
   }
 }
-

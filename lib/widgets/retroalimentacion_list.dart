@@ -33,7 +33,7 @@ class _ListaRetroalimentacionState extends State<ListaRetroalimentacion> {
 
   Future<void> _cargarGroserias() async {
     try {
-      final desdeFirestore = await _servicio.obtenerListaGroseriasFirestore();
+      final desdeFirestore = await _servicio.obtenerListaGroserias();
       if (desdeFirestore.isNotEmpty) {
         if (!mounted) return;
         setState(() => _listaGroserias = desdeFirestore);

@@ -138,7 +138,7 @@ class RutasAplicacion {
         },
       ),
     ],
-    redirect: (context, state) {
+    redirect: (context, state) async {
       final user = FirebaseAuth.instance.currentUser;
       final isLoggedIn = user != null;
       final isLoggingIn = state.uri.toString() == inicioSesion;
@@ -159,6 +159,12 @@ class RutasAplicacion {
 
         // Verificar si el email está verificado (si usó email/password)
         // Nota: Google Auth siempre tiene emailVerified = true
+        try {
+          await user.reload();
+        } catch (e) {
+          debugPrint('No se pudo recargar el usuario: $e');
+        }
+
         if (!user.emailVerified) {
            // Si estamos en inicioSesion, permitimos estar ahí para que vea el mensaje de "Verifica tu correo"
            return null; 

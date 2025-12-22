@@ -1,8 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/retroalimentacion.dart';
+import 'groserias_repository.dart';
 
 class ServicioRetroalimentacion {
+  ServicioRetroalimentacion({GroseriasRepository? groseriasRepository})
+      : _groseriasRepository = groseriasRepository ?? GroseriasRepository();
+
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final GroseriasRepository _groseriasRepository;
+  Map<String, double>? _promediosCache;
+  DateTime? _ultimaActualizacionPromedios;
 
   // Obtener retroalimentaciones de una cápsula
   Stream<List<Retroalimentacion>> obtenerRetroalimentacionPorCapsula(String capsulaId) {
@@ -18,19 +26,14 @@ class ServicioRetroalimentacion {
 
   // Agregar retroalimentación
   Future<void> agregarRetroalimentacion(Retroalimentacion feedback) async {
-    // validar contenido para evitar groserías (bloqueo server-side en cliente)
     final mapa = Map<String, dynamic>.from(feedback.aMapa());
     final comentario = (mapa['comentario'] as String?) ?? '';
-    var malas = await obtenerListaGroseriasFirestore();
-    if (malas.isEmpty) {
-      malas = ['puta', 'mierda', 'gilipollas', 'idiota', 'imbecil', 'cabron', 'pendejo'];
-    }
-    if (_contieneGroseriaEnTexto(comentario, malas)) {
+    final malas = await _groseriasRepository.obtenerLista();
+    if (_groseriasRepository.contieneGroseriaEnTexto(comentario, malas)) {
       throw Exception('El comentario contiene palabras censuradas');
     }
 
     final fbId = '${feedback.capsulaId}_${feedback.usuarioUid}';
-    // Use server timestamp for createdAt to avoid trusting client clock
     mapa['createdAt'] = FieldValue.serverTimestamp();
     await _db.collection('retroalimentaciones').doc(fbId).set(mapa);
   }
@@ -49,13 +52,9 @@ class ServicioRetroalimentacion {
 
   // Actualizar retroalimentación
   Future<void> actualizarRetroalimentacion(String id, Map<String, dynamic> data) async {
-    // validar texto
     final comentario = (data['comentario'] as String?) ?? '';
-    var malas = await obtenerListaGroseriasFirestore();
-    if (malas.isEmpty) {
-      malas = ['puta', 'mierda', 'gilipollas', 'idiota', 'imbecil', 'cabron', 'pendejo'];
-    }
-    if (_contieneGroseriaEnTexto(comentario, malas)) {
+    final malas = await _groseriasRepository.obtenerLista();
+    if (_groseriasRepository.contieneGroseriaEnTexto(comentario, malas)) {
       throw Exception('El comentario contiene palabras censuradas');
     }
 
@@ -71,7 +70,17 @@ class ServicioRetroalimentacion {
   }
 
   // Obtener promedios de estrellas por capsulaId (map capsulaId -> promedio)
-  Future<Map<String, double>> obtenerPromediosPorCapsulas() async {
+  Future<Map<String, double>> obtenerPromediosPorCapsulas({
+    Duration cacheValidez = const Duration(minutes: 5),
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh &&
+        _promediosCache != null &&
+        _ultimaActualizacionPromedios != null &&
+        DateTime.now().difference(_ultimaActualizacionPromedios!) < cacheValidez) {
+      return _promediosCache!;
+    }
+
     final snapshot = await _db.collection('retroalimentaciones').get();
     final Map<String, List<int>> agrupado = {};
 
@@ -89,33 +98,9 @@ class ServicioRetroalimentacion {
       promedios[capsulaId] = lista.isNotEmpty ? (suma / lista.length) : 0.0;
     });
 
+    _promediosCache = promedios;
+    _ultimaActualizacionPromedios = DateTime.now();
     return promedios;
-  }
-
-  // Obtener lista de groserías desde Firestore (doc: 'config/groserias', campo 'palabras' como array)
-  Future<List<String>> obtenerListaGroseriasFirestore() async {
-    try {
-      final doc = await _db.collection('config').doc('groserias').get();
-      if (doc.exists) {
-        final data = doc.data();
-        final palabras = data?['palabras'];
-        if (palabras is List) {
-          return palabras.map((e) => e.toString()).toList();
-        }
-      }
-    } catch (_) {
-      // ignore
-    }
-    return [];
-  }
-
-  // Actualizar lista de groserías en Firestore (doc: 'config/groserias', campo 'palabras' como array)
-  Future<void> actualizarListaGroseriasFirestore(List<String> palabras) async {
-    try {
-      await _db.collection('config').doc('groserias').set({'palabras': palabras});
-    } catch (e) {
-      rethrow;
-    }
   }
 
   // Obtener estadísticas (promedio y conteo) para una capsula
@@ -132,15 +117,11 @@ class ServicioRetroalimentacion {
     return {'avg': avg, 'count': estrellas.length};
   }
 
-  bool _contieneGroseriaEnTexto(String texto, List<String> malas) {
-    if (malas.isEmpty || texto.trim().isEmpty) return false;
-    final lower = texto.toLowerCase();
-    for (final m in malas) {
-      final p = m.toLowerCase().trim();
-      if (p.isEmpty) continue;
-      final regex = RegExp(r'(^|\W)'+RegExp.escape(p)+r'($|\W)', caseSensitive: false);
-      if (regex.hasMatch(lower)) return true;
-    }
-    return false;
-  }
+  @visibleForTesting
+  GroseriasRepository get groseriasRepository => _groseriasRepository;
+
+  Future<List<String>> obtenerListaGroserias() => _groseriasRepository.obtenerLista();
+
+  Future<void> actualizarListaGroserias(List<String> palabras) =>
+      _groseriasRepository.actualizarLista(palabras);
 }

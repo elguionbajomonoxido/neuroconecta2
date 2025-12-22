@@ -59,7 +59,8 @@ class Capsula {
       mediaUrl: data['mediaUrl'],
       creadoPorUid: data['creadoPorUid'] ?? '',
       autor: data['autor'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ??
+          DateTime.fromMillisecondsSinceEpoch(0),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
     );
   }

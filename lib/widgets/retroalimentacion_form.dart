@@ -68,7 +68,7 @@ class _FormularioRetroalimentacionState extends State<FormularioRetroalimentacio
   Future<void> _cargarListaGroserias() async {
     // Intentar cargar desde Firestore primero
     try {
-      final desdeFirestore = await _servicioRetroalimentacion.obtenerListaGroseriasFirestore();
+      final desdeFirestore = await _servicioRetroalimentacion.obtenerListaGroserias();
       if (desdeFirestore.isNotEmpty) {
         _listaGroserias = desdeFirestore;
         return;
