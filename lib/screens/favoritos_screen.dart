@@ -157,8 +157,8 @@ class _PantallaFavoritosState extends State<PantallaFavoritos> {
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
-    final favController = Provider.of<FavoritosController>(context, listen: false);
-    final offline = context.select<FavoritosController, bool>((c) => c.isOffline);
+    final favController = context.watch<FavoritosController>();
+    final offline = favController.isOffline;
 
     return Scaffold(
       appBar: AppBar(
