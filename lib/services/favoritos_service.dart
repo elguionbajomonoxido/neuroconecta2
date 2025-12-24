@@ -6,24 +6,15 @@ class FavoritosService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  late final Stream<Set<String>> _favoritosStream = _createFavoritosStream();
-
-  /// Stream con el Set de IDs de cápsulas favoritas del usuario actual
-  Stream<Set<String>> streamFavoritosIds() => _favoritosStream;
-
-  Stream<Set<String>> _createFavoritosStream() {
-    return _auth.authStateChanges().asyncExpand((user) {
-      if (user == null) return Stream.value(<String>{});
-
-      final uid = user.uid;
-      return _db
-          .collection('usuarios')
-          .doc(uid)
-          .collection('favoritos')
-          .snapshots()
-          .map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet())
-          .handleError((_) {});
-    });
+  /// Stream con el Set de IDs de cápsulas favoritas para un usuario
+  Stream<Set<String>> streamFavoritosIds(String uid) {
+    return _db
+        .collection('usuarios')
+        .doc(uid)
+        .collection('favoritos')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.id).toSet())
+        .handleError((_) {});
   }
 
   /// Obtiene los favoritos una sola vez

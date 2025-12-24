@@ -14,6 +14,7 @@ class FavoritosController extends ChangeNotifier {
 
   StreamSubscription<User?>? _authSub;
   StreamSubscription<List<ConnectivityResult>>? _connectSub;
+  StreamSubscription<Set<String>>? _favoritosSub;
   String? _uid;
   bool _isOffline = false;
   bool _sincronizando = false;
@@ -44,13 +45,19 @@ class FavoritosController extends ChangeNotifier {
     notifyListeners();
 
     if (wasOffline && !_isOffline && _uid != null) {
+      _startFavoritosSubscription(_uid!);
       // Re-sincronizar automáticamente al recuperar conexión
       await syncFromFirestore();
+    }
+
+    if (!wasOffline && _isOffline) {
+      _stopFavoritosSubscription();
     }
   }
 
   Future<void> _onAuthChanged(User? user) async {
     _uid = user?.uid;
+    _stopFavoritosSubscription();
     if (user == null) {
       _favoritosIds = {};
       notifyListeners();
@@ -58,6 +65,9 @@ class FavoritosController extends ChangeNotifier {
     }
 
     await _cargarDesdeCache(user.uid);
+    if (!_isOffline) {
+      _startFavoritosSubscription(user.uid);
+    }
     await syncFromFirestore();
   }
 
@@ -79,6 +89,25 @@ class FavoritosController extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(_prefsKey(uid), _favoritosIds.toList());
     } catch (_) {}
+  }
+
+  void _startFavoritosSubscription(String uid) {
+    _favoritosSub?.cancel();
+    _favoritosSub = _servicioFavoritos.streamFavoritosIds(uid).listen(
+      (ids) async {
+        _favoritosIds = ids;
+        notifyListeners();
+        await _guardarEnCache();
+      },
+      onError: (e) {
+        debugPrint('Error escuchando favoritos: $e');
+      },
+    );
+  }
+
+  void _stopFavoritosSubscription() {
+    _favoritosSub?.cancel();
+    _favoritosSub = null;
   }
 
   /// Cambia localmente el estado de un favorito (optimistic UI)
@@ -135,6 +164,7 @@ class FavoritosController extends ChangeNotifier {
   void dispose() {
     _authSub?.cancel();
     _connectSub?.cancel();
+    _favoritosSub?.cancel();
     super.dispose();
   }
 }
